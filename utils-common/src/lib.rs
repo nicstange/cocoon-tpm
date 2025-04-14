@@ -9,5 +9,6 @@ pub mod bitmanip;
 pub mod ct_cmp;
 pub mod index_permutation;
 pub mod io_slices;
+pub mod murmurhash3;
 pub mod xor;
 pub mod zeroize;
