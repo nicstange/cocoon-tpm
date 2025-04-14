@@ -7,7 +7,10 @@ edition = "2024"
 doctest = false
 
 [features]
-default = ["enable_arch_math_asm", "zeroize"]
+default = [
+    "enable_arch_math_asm", "zeroize",
+    "sha256", "sha384", "sha512"
+]
 
 # Use CPU instructions for basic arithmetic directly. Gives a
 # significant performance gain at the cost of (fairly trivial) inline
@@ -16,9 +19,34 @@ enable_arch_math_asm = ["cmpa/enable_arch_math_asm"]
 
 zeroize = ["dep:zeroize", "cocoon-tpm-utils-common/zeroize", "cmpa/zeroize"]
 
+# Hashes
+sha1 = ["dep:sha1", "cocoon-tpm-tpm2-interface/sha1"]
+sha256 = ["dep:sha2", "cocoon-tpm-tpm2-interface/sha256"]
+sha384 = ["dep:sha2", "cocoon-tpm-tpm2-interface/sha384"]
+sha512 = ["dep:sha2", "cocoon-tpm-tpm2-interface/sha512"]
+sha3_256 = ["dep:sha3", "cocoon-tpm-tpm2-interface/sha3_256"]
+sha3_384 = ["dep:sha3", "cocoon-tpm-tpm2-interface/sha3_384"]
+sha3_512 = ["dep:sha3", "cocoon-tpm-tpm2-interface/sha3_512"]
+sm3_256 = ["dep:sm3", "cocoon-tpm-tpm2-interface/sm3_256"]
+
 [dependencies]
 cocoon-tpm-utils-common = { path = "../utils-common", default-features = false }
+cocoon-tpm-tpm2-interface = { path = "../tpm2-interface", default-features = false }
 
 cmpa = { git = "https://github.com/nicstange/cmpa-rs.git", branch = "master", default-features = false }
 zeroize = { version = "1.8.1", optional = true, default-features = false, features= ["alloc"] }
+
+crypto-common = { version = "0.1.6", default-features = false}
+
+digest = { version = "0.10.6", default-features = false, features = ["subtle"] }
+hmac = { version = "0.12.1", default-features = false }
+
+sha1 = { version = "0.10.5", optional = true, default-features = false }
+sha2 = { version = "0.10.6", optional = true, default-features = false }
+sha3 = { version = "0.10.8", optional = true, default-features = false }
+sm3 = { version = "0.4.1", optional = true, default-features = false }
+
+# Needed by the "hmac" dependency, include it here to enable the
+# "core_hint_black_box" feature.
+subtle = { version = "2.5.0", default-features = false, features = ["core_hint_black_box"] }
 
