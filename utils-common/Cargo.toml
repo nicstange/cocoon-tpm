@@ -4,3 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+cmpa = { git = "https://github.com/nicstange/cmpa-rs.git", branch = "master", default-features = false }
