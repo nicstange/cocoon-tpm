@@ -1,0 +1,24 @@
+[package]
+name = "cocoon-tpm-crypto"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+doctest = false
+
+[features]
+default = ["enable_arch_math_asm", "zeroize"]
+
+# Use CPU instructions for basic arithmetic directly. Gives a
+# significant performance gain at the cost of (fairly trivial) inline
+# assembly, necessarily wrapped in unsafe{} blocks.
+enable_arch_math_asm = ["cmpa/enable_arch_math_asm"]
+
+zeroize = ["dep:zeroize", "cocoon-tpm-utils-common/zeroize", "cmpa/zeroize"]
+
+[dependencies]
+cocoon-tpm-utils-common = { path = "../utils-common", default-features = false }
+
+cmpa = { git = "https://github.com/nicstange/cmpa-rs.git", branch = "master", default-features = false }
+zeroize = { version = "1.8.1", optional = true, default-features = false, features= ["alloc"] }
+
