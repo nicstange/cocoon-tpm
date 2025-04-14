@@ -4,6 +4,7 @@
 
 #![no_std]
 
+pub mod alloc;
 pub mod bitmanip;
 pub mod ct_cmp;
 pub mod index_permutation;
