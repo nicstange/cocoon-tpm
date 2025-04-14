@@ -7,4 +7,5 @@
 pub mod bitmanip;
 pub mod ct_cmp;
 pub mod index_permutation;
+pub mod io_slices;
 pub mod xor;
