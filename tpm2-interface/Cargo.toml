@@ -1,0 +1,75 @@
+[package]
+name = "cocoon-tpm-tpm2-interface"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+doctest = false
+
+[features]
+default = [
+    "zeroize",
+    "sha256",  "sha384", "sha512",
+    "aes",
+    "cbc", "cfb",
+    "rsa", "oaep", "rsapss", "rsaes", "rsassa",
+    "ecc", "ecdh", "ecdsa", "ecschnorr",
+    "ecc_nist_p192", "ecc_nist_p224", "ecc_nist_p256", "ecc_nist_p384", "ecc_nist_p521",
+]
+
+zeroize = ["dep:zeroize"]
+
+# Hashes
+sha1 = []
+sha256 = []
+sha384 = []
+sha512 = []
+sha3_256 = []
+sha3_384 = []
+sha3_512 = []
+sm3_256 = []
+
+# Block ciphers
+aes = []
+camellia = []
+sm4 = []
+tdes = []
+
+# Block cipher modes
+cbc = []
+cfb = []
+ctr = []
+ecb = []
+ofb = []
+
+# KDFs
+mgf1 = []
+
+# RSA
+rsa = []
+oaep = ["rsa", "mgf1"]
+rsapss = ["rsa", "mgf1"]
+rsaes = ["rsa"]
+rsassa = ["rsa"]
+
+# ECC
+ecc = []
+ecdh = ["ecc"]
+ecdsa = ["ecc"]
+ecschnorr = ["ecc"]
+ecc_nist_p192 = ["ecc"]
+ecc_nist_p224 = ["ecc"]
+ecc_nist_p256 = ["ecc"]
+ecc_nist_p384 = ["ecc"]
+ecc_nist_p521 = ["ecc"]
+ecc_bn_p256 = ["ecc"]
+ecc_bn_p638 = ["ecc"]
+ecc_bp_p256_r1 = ["ecc"]
+ecc_bp_p384_r1 = ["ecc"]
+ecc_bp_p512_r1 = ["ecc"]
+ecc_curve_448 = ["ecc"]
+ecc_curve_25519 = ["ecc"]
+ecc_sm2_p256 = ["ecc"]
+
+[dependencies]
+zeroize = { version = "1.8.1", optional = true, default-features = false, features= ["alloc"] }
