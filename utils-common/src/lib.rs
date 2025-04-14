@@ -3,3 +3,5 @@
 // Author: Nicolai Stange <nstange@suse.de>
 
 #![no_std]
+
+pub mod bitmanip;
