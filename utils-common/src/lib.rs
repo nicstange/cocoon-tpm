@@ -5,3 +5,4 @@
 #![no_std]
 
 pub mod bitmanip;
+pub mod index_permutation;
