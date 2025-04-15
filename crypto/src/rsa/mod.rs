@@ -10,5 +10,7 @@ mod key;
 mod keygen;
 #[cfg(feature = "oaep")]
 pub mod oaep;
+#[cfg(feature = "rsapss")]
+pub mod pss;
 
 pub use key::*;
