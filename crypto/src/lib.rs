@@ -7,6 +7,8 @@
 use cocoon_tpm_tpm2_interface as tpm2_interface;
 use cocoon_tpm_utils_common as utils_common;
 
+#[cfg(feature = "ecc")]
+pub mod ecc;
 mod error;
 pub mod hash;
 mod io_slices;

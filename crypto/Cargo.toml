@@ -13,6 +13,7 @@ default = [
     "aes",
     "cfb", "cbc",
     "rsa", "oaep", "rsapss", "rsaes", "rsassa",
+    "ecc",
 ]
 
 # Use CPU instructions for basic arithmetic directly. Gives a
@@ -54,6 +55,11 @@ oaep = ["rsa"]
 rsapss = ["rsa"]
 rsaes = ["rsa"]
 rsassa = ["rsa"]
+
+# ECC
+ecc = ["cocoon-tpm-tpm2-interface/ecc"]
+
+
 
 [dependencies]
 cocoon-tpm-utils-common = { path = "../utils-common", default-features = false }
