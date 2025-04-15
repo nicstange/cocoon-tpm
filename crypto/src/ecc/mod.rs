@@ -3,3 +3,4 @@
 // Author: Nicolai Stange <nstange@suse.de>
 
 pub mod curve;
+mod gen_random_scalar;
