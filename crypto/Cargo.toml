@@ -14,6 +14,7 @@ default = [
     "cfb", "cbc",
     "rsa", "oaep", "rsapss", "rsaes", "rsassa",
     "ecc",
+    "ecc_nist_p192", "ecc_nist_p224", "ecc_nist_p256", "ecc_nist_p384", "ecc_nist_p521",
 ]
 
 # Use CPU instructions for basic arithmetic directly. Gives a
@@ -59,7 +60,17 @@ rsassa = ["rsa"]
 # ECC
 ecc = ["cocoon-tpm-tpm2-interface/ecc"]
 
-
+ecc_nist_p192 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_nist_p192"]
+ecc_nist_p224 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_nist_p224"]
+ecc_nist_p256 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_nist_p256"]
+ecc_nist_p384 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_nist_p384"]
+ecc_nist_p521 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_nist_p521"]
+ecc_bn_p256 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_bn_p256"]
+ecc_bn_p638 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_bn_p638"]
+ecc_bp_p256_r1 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_bp_p256_r1"]
+ecc_bp_p384_r1 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_bp_p384_r1"]
+ecc_bp_p512_r1 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_bp_p512_r1"]
+ecc_sm2_p256 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_sm2_p256"]
 
 [dependencies]
 cocoon-tpm-utils-common = { path = "../utils-common", default-features = false }
