@@ -6,4 +6,7 @@
 
 mod crt;
 mod encrypt;
+mod key;
 mod keygen;
+
+pub use key::*;
