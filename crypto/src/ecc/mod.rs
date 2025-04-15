@@ -3,6 +3,8 @@
 // Author: Nicolai Stange <nstange@suse.de>
 
 pub mod curve;
+#[cfg(feature = "ecdh")]
+pub mod ecdh;
 mod gen_random_scalar;
 mod key;
 
