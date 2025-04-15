@@ -41,6 +41,11 @@ impl convert::From<RngGenerateError> for CryptoError {
 }
 
 /// Main functionality implemented by cryptographic random number generators.
+///
+/// Note that the [Key derivation functions](crate::kdf::VariableChunkOutputKdf)
+/// commonly implement `RngCore` so that these can get used seaminglessly as the
+/// randomness source for any key generation primitives (which would then become
+/// key derivation primitives, strictly speaking).
 pub trait RngCore {
     /// Generate random bytes.
     ///
