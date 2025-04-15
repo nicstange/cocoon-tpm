@@ -12,7 +12,7 @@ default = [
     "sha256", "sha384", "sha512",
     "aes",
     "cfb", "cbc",
-    "rsa", "oaep", "rsapss",
+    "rsa", "oaep", "rsapss", "rsaes",
 ]
 
 # Use CPU instructions for basic arithmetic directly. Gives a
@@ -52,6 +52,7 @@ ofb = ["dep:ofb", "cocoon-tpm-tpm2-interface/ofb"]
 rsa = ["cocoon-tpm-tpm2-interface/rsa"]
 oaep = ["rsa"]
 rsapss = ["rsa"]
+rsaes = ["rsa"]
 
 [dependencies]
 cocoon-tpm-utils-common = { path = "../utils-common", default-features = false }

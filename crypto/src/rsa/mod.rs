@@ -12,5 +12,7 @@ mod keygen;
 pub mod oaep;
 #[cfg(feature = "rsapss")]
 pub mod pss;
+#[cfg(feature = "rsaes")]
+pub mod es_pkcs1_v1_5;
 
 pub use key::*;
