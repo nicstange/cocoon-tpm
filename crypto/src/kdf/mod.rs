@@ -20,6 +20,7 @@ use crate::{
     rng, CryptoError,
 };
 
+pub mod mgf1;
 pub mod tcg_tpm2_kdf_a;
 pub mod tcg_tpm2_kdf_e;
 
