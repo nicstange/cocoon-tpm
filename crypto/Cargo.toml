@@ -12,6 +12,7 @@ default = [
     "sha256", "sha384", "sha512",
     "aes",
     "cfb", "cbc",
+    "rsa",
 ]
 
 # Use CPU instructions for basic arithmetic directly. Gives a
@@ -46,6 +47,9 @@ cfb = ["dep:cfb-mode", "cocoon-tpm-tpm2-interface/cfb"]
 ctr = ["cocoon-tpm-tpm2-interface/ctr"]
 ecb = ["dep:ecb", "cocoon-tpm-tpm2-interface/ecb"]
 ofb = ["dep:ofb", "cocoon-tpm-tpm2-interface/ofb"]
+
+# RSA
+rsa = ["cocoon-tpm-tpm2-interface/rsa"]
 
 [dependencies]
 cocoon-tpm-utils-common = { path = "../utils-common", default-features = false }

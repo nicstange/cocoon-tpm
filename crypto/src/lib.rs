@@ -12,6 +12,8 @@ pub mod hash;
 mod io_slices;
 pub mod kdf;
 pub mod rng;
+#[cfg(feature = "rsa")]
+pub mod rsa;
 pub mod symcipher;
 
 pub use error::*;
