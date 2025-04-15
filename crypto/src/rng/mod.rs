@@ -19,6 +19,8 @@ use core::convert;
 
 pub mod chained;
 pub mod hash_drbg;
+#[cfg(all(feature = "enable_x86_64_rdseed", target_arch = "x86_64"))]
+pub mod x86_64_rdseed;
 
 /// Error type returned by [`RngCore::generate()`](RngCore::generate).
 #[derive(Debug)]

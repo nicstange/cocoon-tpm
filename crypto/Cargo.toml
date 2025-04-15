@@ -8,7 +8,7 @@ doctest = false
 
 [features]
 default = [
-    "enable_arch_math_asm", "zeroize",
+    "enable_arch_math_asm", "enable_x86_64_rdseed", "zeroize",
     "sha256", "sha384", "sha512"
 ]
 
@@ -16,6 +16,10 @@ default = [
 # significant performance gain at the cost of (fairly trivial) inline
 # assembly, necessarily wrapped in unsafe{} blocks.
 enable_arch_math_asm = ["cmpa/enable_arch_math_asm"]
+
+# Enable x86_64 rdseed based random number generator implementation.
+# Brings unsafe{} blocks.
+enable_x86_64_rdseed = []
 
 zeroize = ["dep:zeroize", "cocoon-tpm-utils-common/zeroize", "cmpa/zeroize"]
 
