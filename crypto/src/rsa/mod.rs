@@ -4,3 +4,4 @@
 
 //! RSA implementation.
 
+mod keygen;
