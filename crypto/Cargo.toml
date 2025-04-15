@@ -9,7 +9,9 @@ doctest = false
 [features]
 default = [
     "enable_arch_math_asm", "enable_x86_64_rdseed", "zeroize",
-    "sha256", "sha384", "sha512"
+    "sha256", "sha384", "sha512",
+    "aes",
+    "cfb", "cbc",
 ]
 
 # Use CPU instructions for basic arithmetic directly. Gives a
@@ -33,6 +35,18 @@ sha3_384 = ["dep:sha3", "cocoon-tpm-tpm2-interface/sha3_384"]
 sha3_512 = ["dep:sha3", "cocoon-tpm-tpm2-interface/sha3_512"]
 sm3_256 = ["dep:sm3", "cocoon-tpm-tpm2-interface/sm3_256"]
 
+# Block ciphers
+aes = ["dep:aes", "cocoon-tpm-tpm2-interface/aes"]
+camellia = ["dep:camellia", "cocoon-tpm-tpm2-interface/camellia"]
+sm4 = ["dep:sm4", "cocoon-tpm-tpm2-interface/sm4"]
+
+# Block cipher modes
+cbc = ["dep:cbc", "cocoon-tpm-tpm2-interface/cbc"]
+cfb = ["dep:cfb-mode", "cocoon-tpm-tpm2-interface/cfb"]
+ctr = ["cocoon-tpm-tpm2-interface/ctr"]
+ecb = ["dep:ecb", "cocoon-tpm-tpm2-interface/ecb"]
+ofb = ["dep:ofb", "cocoon-tpm-tpm2-interface/ofb"]
+
 [dependencies]
 cocoon-tpm-utils-common = { path = "../utils-common", default-features = false }
 cocoon-tpm-tpm2-interface = { path = "../tpm2-interface", default-features = false }
@@ -54,3 +68,14 @@ sm3 = { version = "0.4.1", optional = true, default-features = false }
 # "core_hint_black_box" feature.
 subtle = { version = "2.5.0", default-features = false, features = ["core_hint_black_box"] }
 
+aes = { version = "0.8.2", optional = true, default-features = false }
+camellia = { version = "0.1.0", optional = true, default-features = false }
+sm4 = { version = "0.5.1", optional = true, default-features = false }
+
+cipher = { version = "0.4.4", default-features = false }
+cbc = { version = "0.1.2", optional = true, default-features = false }
+cfb-mode = { version = "0.8.2", optional = true, default-features = false }
+ecb = { version = "0.1.2", optional = true, default-features = false }
+ofb = { version = "0.6.1", optional = true, default-features = false }
+
+generic-array = "1.2.0"

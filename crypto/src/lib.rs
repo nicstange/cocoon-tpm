@@ -11,6 +11,7 @@ mod error;
 pub mod hash;
 mod io_slices;
 pub mod rng;
+pub mod symcipher;
 
 pub use error::*;
 pub use io_slices::*;
