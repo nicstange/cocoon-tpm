@@ -21,6 +21,7 @@ use crate::{
 };
 
 pub mod tcg_tpm2_kdf_a;
+pub mod tcg_tpm2_kdf_e;
 
 /// Common interface to the minimal functionality provided by all key derivation
 /// function implementations.
