@@ -17,6 +17,8 @@ use crate::{
 
 use core::convert;
 
+pub mod chained;
+
 /// Error type returned by [`RngCore::generate()`](RngCore::generate).
 #[derive(Debug)]
 pub enum RngGenerateError {
