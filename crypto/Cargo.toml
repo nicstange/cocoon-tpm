@@ -13,7 +13,7 @@ default = [
     "aes",
     "cfb", "cbc",
     "rsa", "oaep", "rsapss", "rsaes", "rsassa",
-    "ecc", "ecdh",
+    "ecc", "ecdh", "ecdsa",
     "ecc_nist_p192", "ecc_nist_p224", "ecc_nist_p256", "ecc_nist_p384", "ecc_nist_p521",
 ]
 
@@ -60,6 +60,7 @@ rsassa = ["rsa"]
 # ECC
 ecc = ["cocoon-tpm-tpm2-interface/ecc"]
 ecdh = ["ecc"]
+ecdsa = ["ecc"]
 
 ecc_nist_p192 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_nist_p192"]
 ecc_nist_p224 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_nist_p224"]
