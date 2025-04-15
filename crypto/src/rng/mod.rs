@@ -18,6 +18,7 @@ use crate::{
 use core::convert;
 
 pub mod chained;
+pub mod hash_drbg;
 
 /// Error type returned by [`RngCore::generate()`](RngCore::generate).
 #[derive(Debug)]
