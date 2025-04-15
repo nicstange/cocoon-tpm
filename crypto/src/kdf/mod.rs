@@ -20,6 +20,8 @@ use crate::{
     rng, CryptoError,
 };
 
+pub mod tcg_tpm2_kdf_a;
+
 /// Common interface to the minimal functionality provided by all key derivation
 /// function implementations.
 pub trait Kdf {
