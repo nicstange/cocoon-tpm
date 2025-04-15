@@ -4,4 +4,5 @@
 
 //! RSA implementation.
 
+mod crt;
 mod keygen;
