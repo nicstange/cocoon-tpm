@@ -4,3 +4,6 @@
 
 pub mod curve;
 mod gen_random_scalar;
+mod key;
+
+pub use key::*;
