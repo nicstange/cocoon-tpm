@@ -14,5 +14,7 @@ pub mod oaep;
 pub mod pss;
 #[cfg(feature = "rsaes")]
 pub mod es_pkcs1_v1_5;
+#[cfg(feature = "rsassa")]
+pub mod ssa_pkcs1_v1_5;
 
 pub use key::*;

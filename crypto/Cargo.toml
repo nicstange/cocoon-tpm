@@ -12,7 +12,7 @@ default = [
     "sha256", "sha384", "sha512",
     "aes",
     "cfb", "cbc",
-    "rsa", "oaep", "rsapss", "rsaes",
+    "rsa", "oaep", "rsapss", "rsaes", "rsassa",
 ]
 
 # Use CPU instructions for basic arithmetic directly. Gives a
@@ -53,6 +53,7 @@ rsa = ["cocoon-tpm-tpm2-interface/rsa"]
 oaep = ["rsa"]
 rsapss = ["rsa"]
 rsaes = ["rsa"]
+rsassa = ["rsa"]
 
 [dependencies]
 cocoon-tpm-utils-common = { path = "../utils-common", default-features = false }
