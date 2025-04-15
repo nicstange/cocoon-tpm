@@ -8,5 +8,7 @@ mod crt;
 mod encrypt;
 mod key;
 mod keygen;
+#[cfg(feature = "oaep")]
+pub mod oaep;
 
 pub use key::*;
