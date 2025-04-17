@@ -1,0 +1,18 @@
+[package]
+name = "bssl-bare-sys"
+version = "0.1.0"
+# Needs to have < 2024 for now, because boringssl's wrapper.h fed into
+# bindgen has function arguments named 'gen', which is a reserved
+# keyword.
+edition = "2021"
+
+# Make usage if this crate exclusive with the official bssl-sys.
+# Otherwise linking conflicts will occur.
+links = "bssl"
+
+[lib]
+
+[build-dependencies]
+bindgen = "0.71.1"
+cc = "1.2.19"
+cmake = "0.1.54"
