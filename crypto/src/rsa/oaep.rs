@@ -69,7 +69,7 @@ pub fn encrypt(
     let seed = &mut seed[1..];
 
     // 7.1.1, step 2.a.
-    let mut h = hash::HashInstance::new(hash_alg);
+    let mut h = hash::HashInstance::new(hash_alg)?;
     if let Some(label) = label {
         h.update(io_slices::SingletonIoSlice::new(label).map_infallible_err())?;
     }
@@ -203,7 +203,7 @@ pub fn decrypt(
             return Err(CryptoError::from(e));
         }
     };
-    let mut h = hash::HashInstance::new(hash_alg);
+    let mut h = hash::HashInstance::new(hash_alg)?;
     if let Some(label) = label {
         h.update(io_slices::SingletonIoSlice::new(label).map_infallible_err())?;
     }

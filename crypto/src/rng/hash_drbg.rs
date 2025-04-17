@@ -75,7 +75,7 @@ impl HashDrbg {
 
         // NIST SP 800-90Ar1, 10.1.1.2: Hash_DRBG_Instantiate_algorithm.
         let seedlen = Self::seedlen_for_hash_alg(alg)?;
-        let mut hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(alg));
+        let mut hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(alg)?);
         let digest_len = hash_instance.digest_len();
         let mut digest_scratch_buf = try_alloc_zeroizing_vec::<u8>(digest_len)?;
         let mut v = try_alloc_zeroizing_vec::<u8>(seedlen)?;
@@ -121,7 +121,7 @@ impl HashDrbg {
         }
 
         // NIST SP 800-90Ar1, 10.1.1.3: Hash_DRBG Reseed_algorithm.
-        let mut hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(self.alg));
+        let mut hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(self.alg)?);
         let digest_len = hash_instance.digest_len();
         // The code below hashes into v[] and c[], which are of size
         // seedlen_for_hash_alg() and thus, not aligned to the digest_len.
@@ -163,7 +163,7 @@ impl HashDrbg {
         mut output: OI,
         mut additional_input: Option<AII>,
     ) -> Result<(), RngGenerateError> {
-        let mut hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(self.alg));
+        let mut hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(self.alg)?);
         let digest_len = hash_instance.digest_len();
 
         let mut digest_scratch_buf = try_alloc_zeroizing_vec::<u8>(digest_len)

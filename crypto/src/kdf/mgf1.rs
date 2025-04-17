@@ -40,7 +40,7 @@ impl RFC8017Mgf1 {
         let counter_last = total_output_len.saturating_sub(1) / block_len as usize;
         let counter_last = u32::try_from(counter_last).map_err(|_| CryptoError::RequestTooBig)?;
 
-        let mut hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(hash_alg));
+        let mut hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(hash_alg)?);
         hash_instance.update(io_slices::SingletonIoSlice::new(seed).map_infallible_err())?;
         Ok(Self {
             hash_instance: Some(hash_instance),

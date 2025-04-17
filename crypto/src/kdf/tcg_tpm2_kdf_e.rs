@@ -67,7 +67,7 @@ impl<'a> TcgTpm2KdfE<'a> {
         }
 
         let (hash_instance, block_len) = if n_total_output_bits != 0 {
-            let hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(hash_alg));
+            let hash_instance = zeroize::ZeroizingFlat::new(hash::HashInstance::new(hash_alg)?);
             let block_len = hash_instance.digest_len();
             (Some(hash_instance), block_len)
         } else {

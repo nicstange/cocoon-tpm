@@ -97,7 +97,7 @@ pub fn sign(
         drop(curve_ops_scratch);
 
         // Step d.
-        let mut h = hash::HashInstance::new(scheme_hash_alg);
+        let mut h = hash::HashInstance::new(scheme_hash_alg)?;
         debug_assert_eq!(e_x_buf.len(), order.len());
         h.update(io_slices::BuffersSliceIoSlicesIter::new(&[e_x_buf.as_slice(), digest]).map_infallible_err())?;
         drop(e_x_buf);
@@ -231,7 +231,7 @@ pub fn verify(
     drop(curve_ops_scratch);
 
     // Step c.
-    let mut h = hash::HashInstance::new(scheme_hash_alg);
+    let mut h = hash::HashInstance::new(scheme_hash_alg)?;
     debug_assert_eq!(e_x_buf.len(), order.len());
     h.update(io_slices::BuffersSliceIoSlicesIter::new(&[e_x_buf.as_slice(), digest]).map_infallible_err())?;
     drop(e_x_buf);

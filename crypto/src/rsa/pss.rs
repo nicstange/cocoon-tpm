@@ -89,7 +89,7 @@ pub fn sign(
     )?;
 
     // 9.1.1., step 5-6.
-    let mut h = hash::HashInstance::new(m_prime_hash_alg);
+    let mut h = hash::HashInstance::new(m_prime_hash_alg)?;
     h.update(io_slices::BuffersSliceIoSlicesIter::new(&[[0u8; 8].as_slice(), digest, salt]).map_infallible_err())?;
     h.finalize_into(signature_h);
 
@@ -185,7 +185,7 @@ pub fn verify(
     let salt = &db[db_pad_end_pos + 1..];
 
     // 9.1.2., step 12-13.
-    let mut h = hash::HashInstance::new(m_prime_hash_alg);
+    let mut h = hash::HashInstance::new(m_prime_hash_alg)?;
     h.update(io_slices::BuffersSliceIoSlicesIter::new(&[[0u8; 8].as_slice(), digest, salt]).map_infallible_err())?;
     let mut h_dst = try_alloc_vec(hlen)?;
     h.finalize_into(&mut h_dst);

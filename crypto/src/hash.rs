@@ -191,10 +191,10 @@ impl HashInstance {
     /// # Arguments:
     ///
     /// * `alg` - The hash algorithm to create an instance for.
-    pub fn new(alg: tpm2_interface::TpmiAlgHash) -> Self {
-        Self {
+    pub fn new(alg: tpm2_interface::TpmiAlgHash) -> Result<Self, convert::Infallible> {
+        Ok(Self {
             state: HashInstanceState::new(alg),
-        }
+        })
     }
 
     /// Append to the digested data.
