@@ -31,6 +31,18 @@ pub enum RngGenerateError {
     CryptoError(CryptoError),
 }
 
+impl convert::From<convert::Infallible> for RngGenerateError {
+    fn from(value: convert::Infallible) -> Self {
+        match value {}
+    }
+}
+
+impl convert::From<CryptoError> for RngGenerateError {
+    fn from(value: CryptoError) -> Self {
+        RngGenerateError::CryptoError(value)
+    }
+}
+
 impl convert::From<RngGenerateError> for CryptoError {
     fn from(value: RngGenerateError) -> Self {
         match value {
@@ -129,6 +141,18 @@ pub fn rng_dyn_dispatch_generate<'a, OI: CryptoWalkableIoSlicesMutIter<'a>>(
 #[derive(Debug)]
 pub enum RngReseedError {
     CryptoError(CryptoError),
+}
+
+impl convert::From<convert::Infallible> for RngReseedError {
+    fn from(value: convert::Infallible) -> Self {
+        match value {}
+    }
+}
+
+impl convert::From<CryptoError> for RngReseedError {
+    fn from(value: CryptoError) -> Self {
+        RngReseedError::CryptoError(value)
+    }
 }
 
 /// Error type returned by
