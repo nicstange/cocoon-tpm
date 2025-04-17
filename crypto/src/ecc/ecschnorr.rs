@@ -102,7 +102,7 @@ pub fn sign(
         h.update(io_slices::BuffersSliceIoSlicesIter::new(&[e_x_buf.as_slice(), digest]).map_infallible_err())?;
         drop(e_x_buf);
         let mut r_buf = try_alloc_vec(hash::hash_alg_digest_len(scheme_hash_alg) as usize)?;
-        h.finalize_into(&mut r_buf);
+        h.finalize_into(&mut r_buf)?;
         // r will get returned. Truncate the buffer to its final size, if needed.
         let r_buf = if r_buf.len() > order.len() {
             let mut new_r_buf = try_alloc_vec(order.len()).unwrap();
@@ -236,7 +236,7 @@ pub fn verify(
     h.update(io_slices::BuffersSliceIoSlicesIter::new(&[e_x_buf.as_slice(), digest]).map_infallible_err())?;
     drop(e_x_buf);
     let mut r_buf = try_alloc_vec(hash::hash_alg_digest_len(scheme_hash_alg) as usize)?;
-    h.finalize_into(&mut r_buf);
+    h.finalize_into(&mut r_buf)?;
     let r = cmpa::MpBigEndianUIntByteSlice::from_bytes(&r_buf[..r_buf.len().min(order.len())]);
 
     // Step d. The numeric comparison is intentional, c.f. the note in TCG TPM2

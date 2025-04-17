@@ -85,7 +85,7 @@ impl FixedBlockOutputKdf for RFC8017Mgf1 {
         let counter: [u8; 4] = self.counter.to_be_bytes();
         self.counter = self.counter.wrapping_add(1);
         hash_instance.update(io_slices::SingletonIoSlice::new(&counter).map_infallible_err())?;
-        hash_instance.take_with(|hash_instance| hash_instance.finalize_into(output));
+        hash_instance.take_with(|hash_instance| hash_instance.finalize_into(output))?;
         Ok(self.block_len)
     }
 }

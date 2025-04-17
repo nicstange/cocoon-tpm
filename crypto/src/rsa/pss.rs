@@ -91,7 +91,7 @@ pub fn sign(
     // 9.1.1., step 5-6.
     let mut h = hash::HashInstance::new(m_prime_hash_alg)?;
     h.update(io_slices::BuffersSliceIoSlicesIter::new(&[[0u8; 8].as_slice(), digest, salt]).map_infallible_err())?;
-    h.finalize_into(signature_h);
+    h.finalize_into(signature_h)?;
 
     // 9.1.1., step 7-8. are implicit.
 
@@ -188,7 +188,7 @@ pub fn verify(
     let mut h = hash::HashInstance::new(m_prime_hash_alg)?;
     h.update(io_slices::BuffersSliceIoSlicesIter::new(&[[0u8; 8].as_slice(), digest, salt]).map_infallible_err())?;
     let mut h_dst = try_alloc_vec(hlen)?;
-    h.finalize_into(&mut h_dst);
+    h.finalize_into(&mut h_dst)?;
 
     // 9.1.2., step 14.
     if ct_cmp::ct_bytes_eq(&h_dst, signature_h).unwrap() == 0 {

@@ -217,8 +217,9 @@ impl HashInstance {
     /// # Arguments:
     ///
     /// * `digest` - Destination to write the produced digest to.
-    pub fn finalize_into_reset(&mut self, digest: &mut [u8]) {
+    pub fn finalize_into_reset(&mut self, digest: &mut [u8]) -> Result<(), convert::Infallible> {
         self.state.finalize_into_reset(digest);
+        Ok(())
     }
 
     /// Produce the final digest into a provided buffer..
@@ -226,8 +227,9 @@ impl HashInstance {
     /// # Arguments:
     ///
     /// * `digest` - Destination to write the produced digest to.
-    pub fn finalize_into(self, digest: &mut [u8]) {
-        self.state.finalize_into(digest)
+    pub fn finalize_into(self, digest: &mut [u8])  -> Result<(), convert::Infallible> {
+        self.state.finalize_into(digest);
+        Ok(())
     }
 
     /// Produce a digest and reset the hash instance.

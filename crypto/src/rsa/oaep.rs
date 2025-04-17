@@ -73,7 +73,7 @@ pub fn encrypt(
     if let Some(label) = label {
         h.update(io_slices::SingletonIoSlice::new(label).map_infallible_err())?;
     }
-    h.finalize_into(&mut db[..hlen]);
+    h.finalize_into(&mut db[..hlen])?;
 
     // 7.1.1, step 2.b. is implicit.
 
@@ -207,7 +207,7 @@ pub fn decrypt(
     if let Some(label) = label {
         h.update(io_slices::SingletonIoSlice::new(label).map_infallible_err())?;
     }
-    h.finalize_into(&mut lhash);
+    h.finalize_into(&mut lhash)?;
 
     // 7.1.2, step 3.g.
     let mut format_is_ok = cmpa::ct_eq_l_l(first_byte as cmpa::LimbType, 0);

@@ -152,7 +152,7 @@ impl<'a> FixedBlockOutputKdf for TcgTpm2KdfE<'a> {
             .map_infallible_err(),
         )?;
 
-        hash_instance.take_with(|hash_instance| hash_instance.finalize_into(output));
+        hash_instance.take_with(|hash_instance| hash_instance.finalize_into(output))?;
         output[0] &= !first_octet_clear_mask;
         if remaining_output_len < self.block_len {
             output[remaining_output_len..].fill(0);

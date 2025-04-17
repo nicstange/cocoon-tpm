@@ -188,7 +188,7 @@ impl HashDrbg {
                     hash_instance
                         .update(additional_input.decoupled_borrow())
                         .map_err(RngGenerateError::CryptoError)?;
-                    hash_instance.finalize_into_reset(&mut digest_scratch_buf);
+                    hash_instance.finalize_into_reset(&mut digest_scratch_buf)?;
                     // Step 2.2.)
                     let mut v = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut self.v);
                     let w = cmpa::MpBigEndianUIntByteSlice::from_bytes(&digest_scratch_buf);
@@ -204,7 +204,7 @@ impl HashDrbg {
             hash_instance
                 .update(io_slices::BuffersSliceIoSlicesIter::new(&[[0x03u8].as_slice(), &self.v]).map_infallible_err())
                 .map_err(RngGenerateError::CryptoError)?;
-            hash_instance.finalize_into_reset(&mut digest_scratch_buf);
+            hash_instance.finalize_into_reset(&mut digest_scratch_buf)?;
             // Step 5.)
             let h = cmpa::MpBigEndianUIntByteSlice::from_bytes(&digest_scratch_buf);
             let mut v = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut self.v);
@@ -282,10 +282,10 @@ impl HashDrbg {
             if remaining >= digest_len {
                 let cur_output_chunk;
                 (cur_output_chunk, output) = output.split_at_mut(digest_len);
-                hash_instance.finalize_into_reset(cur_output_chunk);
+                hash_instance.finalize_into_reset(cur_output_chunk)?;
                 remaining -= digest_len
             } else {
-                hash_instance.finalize_into_reset(digest_scratch_buf);
+                hash_instance.finalize_into_reset(digest_scratch_buf)?;
                 output.copy_from_slice(&digest_scratch_buf[..remaining]);
                 remaining = 0;
             }
@@ -338,11 +338,11 @@ impl HashDrbg {
 
             // Step 4.2.) with final step 5.) fused into the loop.
             if output_slice_len == digest_len {
-                hash_instance.finalize_into_reset(output_slice);
+                hash_instance.finalize_into_reset(output_slice)?;
                 remaining_len -= digest_len;
             } else {
                 assert_eq!(digest_scratch_buf.len(), hash_instance.digest_len());
-                hash_instance.finalize_into_reset(digest_scratch_buf);
+                hash_instance.finalize_into_reset(digest_scratch_buf)?;
                 let digest: &[u8] = digest_scratch_buf;
                 output_slice.copy_from_slice(&digest[..output_slice_len]);
                 remaining_len -= output_slice_len;
