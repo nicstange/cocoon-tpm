@@ -180,7 +180,6 @@ pub const fn hash_alg_select_for_preimage_security_strength(
 }
 
 /// A hash instance.
-#[derive(Clone)]
 pub struct HashInstance {
     state: HashInstanceState,
 }
@@ -195,6 +194,10 @@ impl HashInstance {
         Ok(Self {
             state: HashInstanceState::new(alg),
         })
+    }
+
+    pub fn try_clone(&self) -> Result<Self, convert::Infallible> {
+        Ok(Self { state: self.state.clone() })
     }
 
     /// Append to the digested data.

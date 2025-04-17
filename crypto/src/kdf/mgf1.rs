@@ -71,7 +71,7 @@ impl FixedBlockOutputKdf for RFC8017Mgf1 {
                 // If producing the last block, the hash_instance can be stolen, otherwise it
                 // needs to get cloned.
                 if self.counter != self.counter_last {
-                    hash_instance.clone()
+                    zeroize::ZeroizingFlat::new(hash_instance.try_clone()?)
                 } else {
                     self.hash_instance.take().unwrap()
                 }
