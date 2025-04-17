@@ -9,6 +9,7 @@ doctest = false
 [features]
 default = [
     "enable_arch_math_asm", "enable_x86_64_rdseed", "zeroize",
+    "boringssl",
     "sha256", "sha384", "sha512",
     "aes",
     "cfb", "cbc",
@@ -27,6 +28,10 @@ enable_arch_math_asm = ["cmpa/enable_arch_math_asm"]
 enable_x86_64_rdseed = []
 
 zeroize = ["dep:zeroize", "cocoon-tpm-utils-common/zeroize", "cmpa/zeroize"]
+
+# Replace crypto implementations written in pure Rust with
+# boringssl FFI invocations.
+boringssl = ["dep:bssl-bare-sys"]
 
 # Hashes
 sha1 = ["dep:sha1", "cocoon-tpm-tpm2-interface/sha1"]
@@ -76,6 +81,8 @@ ecc_bp_p512_r1 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_bp_p512_r1"]
 ecc_sm2_p256 = ["ecc", "cocoon-tpm-tpm2-interface/ecc_sm2_p256"]
 
 [dependencies]
+bssl-bare-sys = { path = "../bssl-bare-sys", optional = true }
+
 cocoon-tpm-utils-common = { path = "../utils-common", default-features = false }
 cocoon-tpm-tpm2-interface = { path = "../tpm2-interface", default-features = false }
 
