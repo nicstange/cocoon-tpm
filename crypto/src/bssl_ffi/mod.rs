@@ -3,3 +3,4 @@
 // Author: Nicolai Stange <nstange@suse.de>
 
 mod error;
+pub(super) mod hash;
