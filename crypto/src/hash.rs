@@ -557,8 +557,9 @@ impl HmacInstance {
     /// # Arguments:
     ///
     /// * `digest` - Destination to write the produced digest to.
-    pub fn finalize_into(self, digest: &mut [u8]) {
-        self.state.take_boxed_with(|state| state.finalize_into(digest))
+    pub fn finalize_into(self, digest: &mut [u8]) -> Result<(), convert::Infallible> {
+        self.state.take_boxed_with(|state| state.finalize_into(digest));
+        Ok(())
     }
 
     /// Determine the instance's associated hash algorithm's digest length.

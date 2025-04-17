@@ -164,7 +164,7 @@ impl<'a> FixedBlockOutputKdf for TcgTpm2KdfA<'a> {
             None,
         ))?;
 
-        hmac_instance.finalize_into(output);
+        hmac_instance.finalize_into(output)?;
         output[0] &= !first_octet_clear_mask;
         if remaining_output_len < self.block_len {
             output[remaining_output_len..].fill(0);
