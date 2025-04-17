@@ -526,8 +526,9 @@ impl HmacInstance {
     /// # Arguments:
     ///
     /// * `instance` - The instance to reset `self`'s state to.
-    pub fn reset_to(&mut self, instance: &Self) {
+    pub fn reset_to(&mut self, instance: &Self) -> Result<(), convert::Infallible> {
         self.state.replace(instance.state.deref().deref().clone());
+        Ok(())
     }
 
     /// Repurpose a HMAC instance's memory for the clone of another one.
@@ -538,10 +539,10 @@ impl HmacInstance {
     /// # Arguments:
     ///
     /// * `instance` - The instance to reset `self`'s state to.
-    pub fn repurpose_for_clone_of(self, instance: &Self) -> Self {
+    pub fn repurpose_for_clone_of(self, instance: &Self) -> Result<Self, convert::Infallible> {
         let Self { state } = self;
         let state = state.replace_boxed_with(|| instance.state.deref().deref().clone());
-        Self { state }
+        Ok(Self { state })
     }
 
     /// Append to the digested data.
