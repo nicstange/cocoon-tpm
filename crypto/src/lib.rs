@@ -17,6 +17,8 @@ pub mod rng;
 #[cfg(feature = "rsa")]
 pub mod rsa;
 pub mod symcipher;
+#[cfg(feature = "boringssl")]
+mod bssl_ffi;
 
 pub use error::*;
 pub use io_slices::*;
