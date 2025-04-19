@@ -6,16 +6,25 @@
 //!
 //! # High level overview:
 //!
-//! For both, encryption and decryption with block ciphers, a
-//! [`SymBlockCipherInstance`] must first
-//! get instantiated either [directly with a raw key byte
-//! slice](SymBlockCipherInstance::new) or through a
-//! [`SymBlockCipherKey`](SymBlockCipherKey::instantiate_block_cipher). That
-//! instance can then be used to [encrypt](SymBlockCipherInstance::encrypt) or
-//! [decrypt](SymBlockCipherInstance::decrypt) one or more message with a
-//! specified [block cipher chaining mode](tpm2_interface::TpmiAlgCipherMode)
-//! each.
-
+//! For the encryption with block ciphers, a
+//! [`SymBlockCipherEncryptionInstance`] must first get instantiated either
+//! [directly with a raw key byte slice](SymBlockCipherEncryption Instance::new)
+//! or through a
+//! [`SymBlockCipherKey`](SymBlockCipherKey::instantiate_block_cipher_enc). That
+//! instance can then be used to
+//! [encrypt](SymBlockCipherEncryptionInstance::encrypt) one or more
+//! message with a specified [block cipher chaining
+//! mode](tpm2_interface::TpmiAlgCipherMode) each.
+//!
+//! Similarly, for the decryption with block ciphers, a
+//! [`SymBlockCipherDecryptionInstance`] must first get instantiated either
+//! [directly with a raw key byte slice](SymBlockCipherDecryption Instance::new)
+//! or through a
+//! [`SymBlockCipherKey`](SymBlockCipherKey::instantiate_block_cipher_dec). That
+//! instance can then be used to
+//! [decrypt](SymBlockCipherEncryptionInstance::decrypt) one or more
+//! message with a specified [block cipher chaining
+//! mode](tpm2_interface::TpmiAlgCipherMode) each.
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
@@ -98,26 +107,62 @@ pub enum SymBlockCipherAlg {
     Sm4(SymBlockCipherSm4KeySize),
 }
 
-impl convert::From<&SymBlockCipherInstance> for SymBlockCipherAlg {
+impl convert::From<&SymBlockCipherEncryptionInstance> for SymBlockCipherAlg {
     /// Obtain the [symmetric block cipher algorithm
     /// identifier](SymBlockCipherAlg) associated with a
     /// [`SymBlockCipherInstance`].
-    fn from(instance: &SymBlockCipherInstance) -> Self {
+    fn from(instance: &SymBlockCipherEncryptionInstance) -> Self {
         match instance.state.deref() {
             #[cfg(feature = "aes")]
-            SymBlockCipherInstanceState::Aes128(_) => Self::Aes(SymBlockCipherAesKeySize::Aes128),
+            SymBlockCipherEncryptionInstanceState::Aes128(_) => Self::Aes(SymBlockCipherAesKeySize::Aes128),
             #[cfg(feature = "aes")]
-            SymBlockCipherInstanceState::Aes192(_) => Self::Aes(SymBlockCipherAesKeySize::Aes192),
+            SymBlockCipherEncryptionInstanceState::Aes192(_) => Self::Aes(SymBlockCipherAesKeySize::Aes192),
             #[cfg(feature = "aes")]
-            SymBlockCipherInstanceState::Aes256(_) => Self::Aes(SymBlockCipherAesKeySize::Aes256),
+            SymBlockCipherEncryptionInstanceState::Aes256(_) => Self::Aes(SymBlockCipherAesKeySize::Aes256),
             #[cfg(feature = "camellia")]
-            SymBlockCipherInstanceState::Camellia128(_) => Self::Camellia(SymBlockCipherCamelliaKeySize::Camellia128),
+            SymBlockCipherEncryptionInstanceState::Camellia128(_) => {
+                Self::Camellia(SymBlockCipherCamelliaKeySize::Camellia128)
+            }
             #[cfg(feature = "camellia")]
-            SymBlockCipherInstanceState::Camellia192(_) => Self::Camellia(SymBlockCipherCamelliaKeySize::Camellia192),
+            SymBlockCipherEncryptionInstanceState::Camellia192(_) => {
+                Self::Camellia(SymBlockCipherCamelliaKeySize::Camellia192)
+            }
             #[cfg(feature = "camellia")]
-            SymBlockCipherInstanceState::Camellia256(_) => Self::Camellia(SymBlockCipherCamelliaKeySize::Camellia256),
+            SymBlockCipherEncryptionInstanceState::Camellia256(_) => {
+                Self::Camellia(SymBlockCipherCamelliaKeySize::Camellia256)
+            }
             #[cfg(feature = "sm4")]
-            SymBlockCipherInstanceState::Sm4_128(_) => Self::Sm4(SymBlockCipherSm4KeySize::Sm4_128),
+            SymBlockCipherEncryptionInstanceState::Sm4_128(_) => Self::Sm4(SymBlockCipherSm4KeySize::Sm4_128),
+        }
+    }
+}
+
+impl convert::From<&SymBlockCipherDecryptionInstance> for SymBlockCipherAlg {
+    /// Obtain the [symmetric block cipher algorithm
+    /// identifier](SymBlockCipherAlg) associated with a
+    /// [`SymBlockCipherDecryptionInstance`].
+    fn from(instance: &SymBlockCipherDecryptionInstance) -> Self {
+        match instance.state.deref() {
+            #[cfg(feature = "aes")]
+            SymBlockCipherDecryptionInstanceState::Aes128(_) => Self::Aes(SymBlockCipherAesKeySize::Aes128),
+            #[cfg(feature = "aes")]
+            SymBlockCipherDecryptionInstanceState::Aes192(_) => Self::Aes(SymBlockCipherAesKeySize::Aes192),
+            #[cfg(feature = "aes")]
+            SymBlockCipherDecryptionInstanceState::Aes256(_) => Self::Aes(SymBlockCipherAesKeySize::Aes256),
+            #[cfg(feature = "camellia")]
+            SymBlockCipherDecryptionInstanceState::Camellia128(_) => {
+                Self::Camellia(SymBlockCipherCamelliaKeySize::Camellia128)
+            }
+            #[cfg(feature = "camellia")]
+            SymBlockCipherDecryptionInstanceState::Camellia192(_) => {
+                Self::Camellia(SymBlockCipherCamelliaKeySize::Camellia192)
+            }
+            #[cfg(feature = "camellia")]
+            SymBlockCipherDecryptionInstanceState::Camellia256(_) => {
+                Self::Camellia(SymBlockCipherCamelliaKeySize::Camellia256)
+            }
+            #[cfg(feature = "sm4")]
+            SymBlockCipherDecryptionInstanceState::Sm4_128(_) => Self::Sm4(SymBlockCipherSm4KeySize::Sm4_128),
         }
     }
 }
@@ -165,14 +210,44 @@ macro_rules! gen_match_on_block_cipher_alg {
     };
 }
 
-macro_rules! block_cipher_to_impl {
+macro_rules! block_cipher_to_enc_impl {
     (Aes, 128) => {
+        // cfb_mode needs a Decryptor to impl IvState.
         aes::Aes128
     };
     (Aes, 192) => {
+        // cfb_mode needs a Decryptor to impl IvState.
         aes::Aes192
     };
     (Aes, 256) => {
+        // cfb_mode needs a Decryptor to impl IvState.
+        aes::Aes256
+    };
+    (Camellia, 128) => {
+        camellia::Camellia128
+    };
+    (Camellia, 192) => {
+        camellia::Camellia192
+    };
+    (Camellia, 256) => {
+        camellia::Camellia256
+    };
+    (Sm4, 128) => {
+        sm4::Sm4
+    };
+}
+
+macro_rules! block_cipher_to_dec_impl {
+    (Aes, 128) => {
+        // Encryptor is needed for CFB, CTR, decryptor for others.
+        aes::Aes128
+    };
+    (Aes, 192) => {
+        // Encryptor is needed for CFB, CTR, decryptor for others.
+        aes::Aes192
+    };
+    (Aes, 256) => {
+        // Encryptor is needed for CFB, CTR, decryptor for others.
         aes::Aes256
     };
     (Camellia, 128) => {
@@ -256,10 +331,12 @@ impl SymBlockCipherAlg {
     /// Determine the key length associated with the symmetric block cipher
     /// algorithm.
     pub fn key_len(&self) -> usize {
+        // The key length should not be different between encryption and decryption
+        // implementations. Use the one from the encryption implementation.
         macro_rules! gen_block_cipher_key_len {
             ($block_alg_id:ident,
              $key_size:tt) => {{
-                let key_len = <block_cipher_to_impl!($block_alg_id, $key_size)>::key_size();
+                let key_len = <block_cipher_to_enc_impl!($block_alg_id, $key_size)>::key_size();
                 debug_assert_eq!(8 * key_len, $key_size);
                 key_len
             }};
@@ -270,10 +347,12 @@ impl SymBlockCipherAlg {
     /// Determine the block length associated with the symmetric block cipher
     /// algorithm.
     pub fn block_len(&self) -> usize {
+        // The block length should not be different between encryption and decryption
+        // implementations. Use the one from the encryption implementation.
         macro_rules! gen_block_cipher_block_len {
             ($block_alg_id:ident,
              $key_size:tt) => {
-                <block_cipher_to_impl!($block_alg_id, $key_size)>::block_size()
+                <block_cipher_to_enc_impl!($block_alg_id, $key_size)>::block_size()
             };
         }
         gen_match_on_block_cipher_alg!(self, gen_block_cipher_block_len)
@@ -283,6 +362,8 @@ impl SymBlockCipherAlg {
     /// mode](tpm2_interface::TpmiAlgCipherMode) operating on the symmetric
     /// block cipher algorithm.
     pub fn iv_len_for_mode(&self, mode: tpm2_interface::TpmiAlgCipherMode) -> usize {
+        // The IV length should not be different between encryption and decryption
+        // implementations. Use the one from the encryption implementation.
         macro_rules! gen_iv_len_for_mode_and_block_cipher {
             (Ecb $(, $($args:tt),*)?) => {
                 0
@@ -290,7 +371,7 @@ impl SymBlockCipherAlg {
             ($mode_id:tt,
               $block_alg_id:ident,
               $key_size:tt) => {
-                <mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::iv_size()
+                <mode_to_enc_impl!($mode_id, block_cipher_to_enc_impl!($block_alg_id, $key_size))>::iv_size()
             };
         }
 
@@ -420,9 +501,14 @@ impl SymBlockCipherKey {
         Ok(Self { block_cipher_alg, key })
     }
 
-    /// Instantiate a block cipher instance for the key.
-    pub fn instantiate_block_cipher(&self) -> Result<SymBlockCipherInstance, CryptoError> {
-        SymBlockCipherInstance::new(self.block_cipher_alg, &self.key)
+    /// Instantiate a block cipher encryption instance for the key.
+    pub fn instantiate_block_cipher_enc(&self) -> Result<SymBlockCipherEncryptionInstance, CryptoError> {
+        SymBlockCipherEncryptionInstance::new(self.block_cipher_alg, &self.key)
+    }
+
+    /// Instantiate a block cipher decryption instance for the key.
+    pub fn instantiate_block_cipher_dec(&self) -> Result<SymBlockCipherDecryptionInstance, CryptoError> {
+        SymBlockCipherDecryptionInstance::new(self.block_cipher_alg, &self.key)
     }
 }
 
@@ -467,30 +553,284 @@ impl convert::TryFrom<(SymBlockCipherAlg, zeroize::Zeroizing<Vec<u8>>)> for SymB
 
 impl zeroize::ZeroizeOnDrop for SymBlockCipherKey {}
 
-/// A symmetric block cipher instance providing encryption and decryption
-/// functionality.
+// Used internally from multiple functions of SymBlockCipherEncryptionInstance
+// and SymBlockCipherDecryptionInstance.
+macro_rules! sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher {
+    ($mode_id:tt, $mode_supports_partial_last_block:literal, $gen_mode_transform_new_impl_instance_snippet:ident,
+             $gen_mode_block_transform_cb_snippet:ident,
+             $gen_mode_transform_grab_iv_snippet:ident,
+             $dst_io_slices:ident,
+             $src_io_slices:ident,
+             $iv:ident, $iv_out:ident,
+             $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
+        // The block length should not be different between encryption and decryption
+        // implementations. Use the one from the encryption implementation.
+        let block_len = <block_cipher_to_enc_impl!($block_alg_id, $key_size)>::block_size();
+        let dst_len = $dst_io_slices.total_len()?;
+        if !$mode_supports_partial_last_block && dst_len % block_len != 0 {
+            return Err(CryptoError::InvalidMessageLength);
+        } else if $src_io_slices.total_len()? != dst_len {
+            return Err(CryptoError::Internal);
+        }
+
+        let mut scratch_block_buf = zeroize::Zeroizing::from(Vec::new());
+        if !$dst_io_slices.all_aligned_to(block_len)? || !$src_io_slices.all_aligned_to(block_len)? {
+            scratch_block_buf = try_alloc_zeroizing_vec(block_len)?;
+        }
+
+        let mut mode_transform_impl_instance = $gen_mode_transform_new_impl_instance_snippet!(
+            $mode_id,
+            $block_alg_id,
+            $key_size,
+            $block_cipher_impl_instance,
+            $iv,
+            $iv_out
+        );
+
+        loop {
+            if !transform_next_blocks::<$mode_supports_partial_last_block, _>(
+                $dst_io_slices,
+                $src_io_slices,
+                $gen_mode_block_transform_cb_snippet!(mode_transform_impl_instance),
+                block_len,
+                &mut scratch_block_buf,
+            )? {
+                break;
+            }
+        }
+
+        $gen_mode_transform_grab_iv_snippet!(mode_transform_impl_instance, $iv_out);
+    }};
+}
+
+fn transform_next_blocks<'a, 'b, const ENABLE_PARTIAL_LAST_BLOCK: bool, BT: FnMut(&mut [u8], Option<&[u8]>)>(
+    dst: &mut dyn CryptoWalkableIoSlicesMutIter<'a>,
+    src: &mut dyn CryptoWalkableIoSlicesIter<'b>,
+    mut block_transform: BT,
+    block_len: usize,
+    scratch_block_buf: &mut [u8],
+) -> Result<bool, CryptoError> {
+    debug_assert!(ENABLE_PARTIAL_LAST_BLOCK || dst.is_empty()? || dst.total_len()? >= block_len);
+    debug_assert_eq!(src.total_len()?, dst.total_len()?);
+    let first_dst_slice_len = dst.next_slice_len()?;
+    // Try to process a batch of multiple block cipher blocks at once.
+    if first_dst_slice_len >= 2 * block_len {
+        let first_src_slice_len = src.next_slice_len()?;
+        if first_src_slice_len >= 2 * block_len {
+            let batch_len = first_dst_slice_len.min(first_src_slice_len);
+            let batch_len = if block_len.is_pow2() {
+                batch_len & !(block_len - 1)
+            } else {
+                batch_len - (batch_len % block_len)
+            };
+            let batch_dst_slice = match dst.next_slice_mut(Some(batch_len))? {
+                Some(batch_dst_slice) => batch_dst_slice,
+                None => return Err(CryptoError::Internal),
+            };
+            let batch_src_slice = match src.next_slice(Some(batch_len))? {
+                Some(batch_src_slice) => batch_src_slice,
+                None => return Err(CryptoError::Internal),
+            };
+
+            let mut pos_in_batch_slice = 0;
+            while pos_in_batch_slice != batch_len {
+                block_transform(
+                    &mut batch_dst_slice[pos_in_batch_slice..pos_in_batch_slice + block_len],
+                    Some(&batch_src_slice[pos_in_batch_slice..pos_in_batch_slice + block_len]),
+                );
+                pos_in_batch_slice += block_len
+            }
+            return Ok(true);
+        }
+    }
+
+    let first_dst_slice = match dst.next_slice_mut(Some(block_len))? {
+        Some(first_dst_slice) => first_dst_slice,
+        None => {
+            if !src.is_empty()? {
+                return Err(CryptoError::Internal);
+            }
+            return Ok(false);
+        }
+    };
+    let first_src_slice = match src.next_slice(Some(block_len))? {
+        Some(first_src_slice) => first_src_slice,
+        None => return Err(CryptoError::Internal),
+    };
+    if first_src_slice.len() == block_len && first_dst_slice.len() == block_len {
+        block_transform(first_dst_slice, Some(first_src_slice));
+    } else {
+        debug_assert_eq!(scratch_block_buf.len(), block_len);
+        let mut src_block_len = first_src_slice.len();
+        scratch_block_buf[..src_block_len].copy_from_slice(first_src_slice);
+        src_block_len += io_slices::SingletonIoSliceMut::new(&mut scratch_block_buf[src_block_len..])
+            .map_infallible_err::<CryptoError>()
+            .copy_from_iter(src)?;
+        if src_block_len != block_len {
+            if !ENABLE_PARTIAL_LAST_BLOCK {
+                return Err(CryptoError::Internal);
+            } else {
+                scratch_block_buf[src_block_len..].fill(0);
+            }
+        } else if src_block_len < first_dst_slice.len() {
+            return Err(CryptoError::Internal);
+        }
+
+        block_transform(scratch_block_buf, None);
+
+        let mut dst_block_len = first_dst_slice.len();
+        first_dst_slice.copy_from_slice(&scratch_block_buf[..dst_block_len]);
+        dst_block_len += dst.copy_from_iter(
+            &mut io_slices::SingletonIoSlice::new(&scratch_block_buf[dst_block_len..src_block_len])
+                .map_infallible_err(),
+        )?;
+        if dst_block_len != src_block_len {
+            return Err(CryptoError::Internal);
+        }
+    }
+
+    Ok(true)
+}
+
+// Used internally from multiple functions of SymBlockCipherEncryptionInstance
+// and SymBlockCipherDecryptionInstance.
+macro_rules! sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher {
+    ($mode_id:tt, $mode_supports_partial_last_block:literal, $gen_mode_transform_new_impl_instance_snippet:ident,
+             $gen_mode_block_transform_cb_snippet:ident,
+             $gen_mode_transform_grab_iv_snippet:ident,
+             $dst_io_slices:ident,
+             $iv:ident, $iv_out:ident,
+             $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
+        // The block length should not be different between encryption and decryption
+        // implementations. Use the one from the encryption implementation.
+        let block_len = <block_cipher_to_enc_impl!($block_alg_id, $key_size)>::block_size();
+        let dst_len = $dst_io_slices.total_len()?;
+        if !$mode_supports_partial_last_block && dst_len % block_len != 0 {
+            return Err(CryptoError::InvalidMessageLength);
+        }
+
+        let mut scratch_block_buf = zeroize::Zeroizing::from(Vec::new());
+        if !$dst_io_slices.all_aligned_to(block_len)? {
+            scratch_block_buf = try_alloc_zeroizing_vec(block_len)?;
+        }
+
+        let mut mode_transform_impl_instance = $gen_mode_transform_new_impl_instance_snippet!(
+            $mode_id,
+            $block_alg_id,
+            $key_size,
+            $block_cipher_impl_instance,
+            $iv,
+            $iv_out
+        );
+
+        loop {
+            if !transform_next_blocks_in_place::<$mode_supports_partial_last_block, _, _>(
+                &mut $dst_io_slices,
+                $gen_mode_block_transform_cb_snippet!(mode_transform_impl_instance),
+                block_len,
+                &mut scratch_block_buf,
+            )? {
+                break;
+            }
+        }
+
+        $gen_mode_transform_grab_iv_snippet!(mode_transform_impl_instance, $iv_out);
+    }};
+}
+
+fn transform_next_blocks_in_place<
+    'a,
+    'b,
+    const ENABLE_PARTIAL_LAST_BLOCK: bool,
+    BT: FnMut(&mut [u8]),
+    DI: CryptoPeekableIoSlicesMutIter<'a>,
+>(
+    dst: &mut DI,
+    mut block_transform: BT,
+    block_len: usize,
+    scratch_block_buf: &mut [u8],
+) -> Result<bool, CryptoError> {
+    debug_assert!(ENABLE_PARTIAL_LAST_BLOCK || dst.is_empty()? || dst.total_len()? >= block_len);
+    let first_dst_slice_len = dst.next_slice_len()?;
+    // Try to process a batch of multiple block cipher blocks at once.
+    if first_dst_slice_len >= 2 * block_len {
+        let batch_len = if block_len.is_pow2() {
+            first_dst_slice_len & !(block_len - 1)
+        } else {
+            first_dst_slice_len - (first_dst_slice_len % block_len)
+        };
+        let batch_dst_slice = match dst.next_slice_mut(Some(batch_len))? {
+            Some(batch_dst_slice) => batch_dst_slice,
+            None => return Err(CryptoError::Internal),
+        };
+
+        let mut pos_in_batch_slice = 0;
+        while pos_in_batch_slice != batch_len {
+            block_transform(&mut batch_dst_slice[pos_in_batch_slice..pos_in_batch_slice + block_len]);
+            pos_in_batch_slice += block_len
+        }
+        return Ok(true);
+    }
+
+    let first_dst_slice = match dst.next_slice_mut(Some(block_len))? {
+        Some(first_dst_slice) => first_dst_slice,
+        None => {
+            return Ok(false);
+        }
+    };
+    if first_dst_slice.len() == block_len {
+        block_transform(first_dst_slice);
+    } else {
+        debug_assert_eq!(scratch_block_buf.len(), block_len);
+        let mut src_block_len = first_dst_slice.len();
+        scratch_block_buf[..src_block_len].copy_from_slice(first_dst_slice);
+        // When copying from the destination into the scratch buffer, retain the
+        // original IOSlicesMut, so that the result can later get written back again.
+        src_block_len += io_slices::SingletonIoSliceMut::new(&mut scratch_block_buf[src_block_len..])
+            .map_infallible_err()
+            .copy_from_iter(&mut dst.decoupled_borrow())?;
+        if src_block_len != block_len {
+            if !ENABLE_PARTIAL_LAST_BLOCK {
+                return Err(CryptoError::Internal);
+            } else {
+                scratch_block_buf[src_block_len..].fill(0);
+            }
+        }
+
+        block_transform(scratch_block_buf);
+
+        let mut dst_block_len = first_dst_slice.len();
+        first_dst_slice.copy_from_slice(&scratch_block_buf[..dst_block_len]);
+        dst_block_len += dst.copy_from_iter(
+            &mut io_slices::SingletonIoSlice::new(&scratch_block_buf[dst_block_len..]).map_infallible_err(),
+        )?;
+        debug_assert_eq!(dst_block_len, src_block_len);
+    }
+
+    Ok(true)
+}
+
+/// A symmetric block cipher instance providing encryption functionality.
 ///
 /// A symmetric block cipher instance is associated with a specific [block
 /// cipher algorithm](SymBlockCipherAlg) and a key.  It may get instantiated
 /// either [directly from a raw key byte slice](Self::new) or from a
 /// [`SymBlockCipherKey`](SymBlockCipherKey::instantiate_block_cipher).
 ///
-/// Encryption and decryption requests are handled through
-/// [`encrypt()`](Self::encrypt)/[`encrypt_in_place()`](Self::encrypt_in_place)
-/// and [`decrypt()`](Self::decrypt)/
-/// [`decrypt_in_place()`](Self::decrypt_in_place) respectively. These
-/// all accept a [block cipher chaining mode](tpm2_interface::TpmiAlgCipherMode)
-/// to be used for the request. Encryption and decryption operations don't alter
-/// the instance's state and a single instance may be used for the encrpytion or
-/// decryption of multiple independent message.
-pub struct SymBlockCipherInstance {
-    state: Box<SymBlockCipherInstanceState>,
+/// Encryption requests are handled through
+/// [`encrypt()`](Self::encrypt)/[`encrypt_in_place()`](Self::encrypt_in_place).
+/// These accept a [block cipher chaining
+/// mode](tpm2_interface::TpmiAlgCipherMode) to be used for the
+/// request. Encryption operations don't alter the instance's state and a single
+/// instance may be used for the encrpytion of multiple independent message.
+pub struct SymBlockCipherEncryptionInstance {
+    state: Box<SymBlockCipherEncryptionInstanceState>,
 }
 
-impl SymBlockCipherInstance {
-    /// Instantiate a `SymBlockCipherInstance` from a pair of [symmetric block
-    /// cipher algorithm identifier](SymBlockCipherAlg) and a raw key byte
-    /// slice.
+impl SymBlockCipherEncryptionInstance {
+    /// Instantiate a `SymBlockCipherEncryptionInstance` from a pair of
+    /// [symmetric block cipher algorithm identifier](SymBlockCipherAlg) and
+    /// a raw key byte slice.
     ///
     /// # Arguments:
     /// * `alg_id` - The [symmetric block cipher algorithm](SymBlockCipherAlg)
@@ -501,17 +841,19 @@ impl SymBlockCipherInstance {
     #[inline(never)]
     pub fn new(alg_id: SymBlockCipherAlg, key: &[u8]) -> Result<Self, CryptoError> {
         Ok(Self {
-            state: SymBlockCipherInstanceState::new(alg_id, key)?,
+            state: SymBlockCipherEncryptionInstanceState::new(alg_id, key)?,
         })
     }
 
-    /// Try to clone a `SymBlockCipherInstance`.
+    /// Try to clone a `SymBlockCipherEncryptionInstance`.
     #[inline(never)]
     pub fn try_clone(&self) -> Result<Self, CryptoError> {
         Ok(Self {
-            state: box_try_new_with(|| -> Result<SymBlockCipherInstanceState, convert::Infallible> {
-                Ok(self.state.deref().clone())
-            })?,
+            state: box_try_new_with(
+                || -> Result<SymBlockCipherEncryptionInstanceState, convert::Infallible> {
+                    Ok(self.state.deref().clone())
+                },
+            )?,
         })
     }
 
@@ -523,8 +865,9 @@ impl SymBlockCipherInstance {
         self.state.block_len()
     }
 
-    /// Determine the IV length for the use of the `SymBlockCipherInstance` with
-    /// a given [block cipher chaining mode](tpm2_interface::TpmiAlgCipherMode).
+    /// Determine the IV length for the use of the
+    /// `SymBlockCipherEncryptionInstance` with a given [block cipher
+    /// chaining mode](tpm2_interface::TpmiAlgCipherMode).
     ///
     /// Equivalent to
     /// [`SymBlockCipherAlg::iv_len_for_mode()`](SymBlockCipherAlg::iv_len_for_mode).
@@ -600,6 +943,512 @@ impl SymBlockCipherInstance {
     ) -> Result<(), CryptoError> {
         self.state.encrypt_in_place(mode, iv, dst, iv_out)
     }
+}
+
+// All supported block cipher implementations possibly wrapped implement
+// ZeroizeOnDrop.
+#[cfg(feature = "zeroize")]
+impl zeroize::ZeroizeOnDrop for SymBlockCipherEncryptionInstance {}
+
+#[derive(Clone)]
+enum SymBlockCipherEncryptionInstanceState {
+    #[cfg(feature = "aes")]
+    Aes128(block_cipher_to_enc_impl!(Aes, 128)),
+    #[cfg(feature = "aes")]
+    Aes192(block_cipher_to_enc_impl!(Aes, 192)),
+    #[cfg(feature = "aes")]
+    Aes256(block_cipher_to_enc_impl!(Aes, 256)),
+    #[cfg(feature = "camellia")]
+    Camellia128(block_cipher_to_enc_impl!(Camellia, 128)),
+    #[cfg(feature = "camellia")]
+    Camellia192(block_cipher_to_enc_impl!(Camellia, 192)),
+    #[cfg(feature = "camellia")]
+    Camellia256(block_cipher_to_enc_impl!(Camellia, 256)),
+    #[cfg(feature = "sm4")]
+    Sm4_128(block_cipher_to_enc_impl!(Sm4, 128)),
+}
+
+macro_rules! gen_match_on_block_cipher_encryption_instance {
+    ($block_cipher_instance_value:expr, $m:ident, $block_cipher_impl_instance:ident $(, $($args:tt),*)?) => {
+        match $block_cipher_instance_value {
+            #[cfg(feature = "aes")]
+            SymBlockCipherEncryptionInstanceState::Aes128($block_cipher_impl_instance) => {
+                $m!($($($args),*,)? Aes, 128, $block_cipher_impl_instance)
+            },
+            #[cfg(feature = "aes")]
+            SymBlockCipherEncryptionInstanceState::Aes192($block_cipher_impl_instance) => {
+                $m!($($($args),*,)? Aes, 192, $block_cipher_impl_instance)
+            },
+            #[cfg(feature = "aes")]
+            SymBlockCipherEncryptionInstanceState::Aes256($block_cipher_impl_instance) => {
+                $m!($($($args),*,)? Aes, 256, $block_cipher_impl_instance)
+            },
+            #[cfg(feature = "camellia")]
+            SymBlockCipherEncryptionInstanceState::Camellia128($block_cipher_impl_instance) => {
+                $m!($($($args),*,)? Camellia, 128, $block_cipher_impl_instance)
+            },
+            #[cfg(feature = "camellia")]
+            SymBlockCipherEncryptionInstanceState::Camellia192($block_cipher_impl_instance) => {
+                $m!($($($args),*,)? Camellia, 192, $block_cipher_impl_instance)
+            },
+            #[cfg(feature = "camellia")]
+            SymBlockCipherEncryptionInstanceState::Camellia256($block_cipher_impl_instance) => {
+                $m!($($($args),*,)? Camellia, 256, $block_cipher_impl_instance)
+            },
+            #[cfg(feature = "sm4")]
+            SymBlockCipherEncryptionInstanceState::Sm4_128($block_cipher_impl_instance) => {
+                $m!($($($args),*,)? Sm4, 128, $block_cipher_impl_instance)
+            },
+        }
+    };
+}
+
+macro_rules! block_alg_id_to_encryption_instance_variant {
+    (Aes, 128) => {
+        SymBlockCipherEncryptionInstanceState::Aes128
+    };
+    (Aes, 192) => {
+        SymBlockCipherEncryptionInstanceState::Aes192
+    };
+    (Aes, 256) => {
+        SymBlockCipherEncryptionInstanceState::Aes256
+    };
+    (Camellia, 128) => {
+        SymBlockCipherEncryptionInstanceState::Camellia128
+    };
+    (Camellia, 192) => {
+        SymBlockCipherEncryptionInstanceState::Camellia192
+    };
+    (Camellia, 256) => {
+        SymBlockCipherEncryptionInstanceState::Camellia256
+    };
+    (Sm4, 128) => {
+        SymBlockCipherEncryptionInstanceState::Sm4_128
+    };
+}
+
+// Generate code snippet for the instantiation of (external) mode
+// encryption implementations implementing the crypto_common::InnerIvInit trait.
+//
+// Common to SymBlockCipherEncryptionInstanceState::encrypt() and
+// ::encrypt_in_place().
+#[allow(unused_macros)]
+macro_rules! gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet {
+    ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident, $iv:ident, $iv_out:ident) => {{
+        // Don't use crypto_common's convenience InnerIvInit::from_slice() for
+        // instantiating the block mode, but wrap the IV explictly first to have
+        // all possible error paths out of the way, thereby enabling a zero copy
+        // construction right onto the stack.
+        let iv_len = <mode_to_enc_impl!($mode_id, block_cipher_to_enc_impl!($block_alg_id, $key_size))
+                                                                                         as crypto_common::IvSizeUser>
+                                                                                     ::IvSize::to_usize();
+        if $iv.len() != iv_len {
+            return Err(CryptoError::InvalidIV);
+        } else if let Some(iv_out) = &$iv_out {
+            if iv_out.len() != iv_len {
+                return Err(CryptoError::Internal);
+            }
+        }
+
+        let iv = crypto_common::Iv::<
+                        mode_to_enc_impl!($mode_id, block_cipher_to_enc_impl!($block_alg_id, $key_size)),
+                    >::from_slice($iv);
+
+        // Note that the block cipher instance is a reference, which implements
+        // crypto_common's BlockEncrypt, hence BlockEncryptMut. This reduces the mode
+        // instance's size on the stack significantly.
+        <mode_to_enc_impl!($mode_id, block_cipher_to_enc_impl!($block_alg_id, $key_size))>::inner_iv_init(
+            $block_cipher_impl_instance,
+            iv,
+        )
+    }};
+}
+
+// Generate code snippet for the instantiation of (external) mode
+// encryption implementations implementing the crypto_common::InnerInit trait.
+//
+// Common to SymBlockCipherEncryptionInstanceState::encrypt() and
+// ::encrypt_in_place().
+#[allow(unused_macros)]
+macro_rules! gen_inner_init_trait_mode_encryptor_impl_instance_new_snippet {
+    ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident, $iv:ident, $iv_out:ident) => {{
+        if $iv.len() != 0 {
+            return Err(CryptoError::InvalidIV);
+        } else if let Some(iv_out) = $iv_out {
+            if iv_out.len() != 0 {
+                return Err(CryptoError::Internal);
+            }
+        }
+
+        // Note that the block cipher instance is a reference, which implements
+        // crypto_common's BlockEncrypt, hence BlockEncryptMut. This reduces the mode
+        // instance's size on the stack significantly.
+        <mode_to_enc_impl!($mode_id, block_cipher_to_enc_impl!($block_alg_id, $key_size))>::inner_init(
+            $block_cipher_impl_instance,
+        )
+    }};
+}
+
+// Generate code snippet for obtaining the IV from for (external) mode
+// implementations implementing the cipher::IvState trait.
+//
+// Common to SymBlockCipherEncryptionInstanceState::encrypt()/
+// ::encrypt_in_place() and SymBlockCipherDecryptionInstanceState::decrypt()/
+// ::decrypt_in_place().
+#[allow(unused_macros)]
+macro_rules! gen_iv_state_trait_mode_grab_iv_snippet {
+    ($mode_transform_impl_instance:ident, $iv_out:ident) => {{
+        if let Some(iv_out) = $iv_out {
+            iv_out.copy_from_slice($mode_transform_impl_instance.iv_state().deref());
+        }
+    }};
+}
+
+// Generate nop code snippet for obtaining the IV from modes with no IV.
+//
+// Common to SymBlockCipherEncryptionInstanceState::encrypt()/
+// ::encrypt_in_place() and SymBlockCipherDecryptionInstanceState::decrypt()/
+// ::decrypt_in_place().
+#[allow(unused_macros)]
+macro_rules! gen_grab_iv_nop_snippet {
+    ($mode_transform_impl_instance:ident, $iv_out:ident) => {};
+}
+
+impl SymBlockCipherEncryptionInstanceState {
+    fn new(alg_id: SymBlockCipherAlg, key: &[u8]) -> Result<Box<Self>, CryptoError> {
+        macro_rules! gen_block_alg_instantiate {
+            ($block_alg_id:tt, $key_size:tt) => {{
+                // Don't use crypto_common's convenience KeyInit::from_slice() for instantiating the
+                // cipher, but wrap the key explictly first to have all possible error paths out of
+                // the way, thereby enabling a zero copy construction right into the Box' memory.
+                if key.len() !=
+                                <block_cipher_to_enc_impl!($block_alg_id, $key_size) as crypto_common::KeySizeUser>
+                                    ::KeySize::to_usize() {
+                                return Err(CryptoError::KeySize);
+                            }
+                let key = crypto_common::Key::<block_cipher_to_enc_impl!($block_alg_id, $key_size)>::from_slice(key);
+
+                box_try_new_with(|| -> Result<Self, convert::Infallible> {
+                    Ok(block_alg_id_to_encryption_instance_variant!($block_alg_id, $key_size)(
+                        <block_cipher_to_enc_impl!($block_alg_id, $key_size)>::new(key),
+                    ))
+                })?
+            }};
+        }
+
+        Ok(gen_match_on_block_cipher_alg!(alg_id, gen_block_alg_instantiate))
+    }
+
+    fn block_len(&self) -> usize {
+        macro_rules! gen_block_cipher_block_len {
+            ($block_alg_id:ident,
+             $key_size:tt,
+             _unused) => {
+                <block_cipher_to_enc_impl!($block_alg_id, $key_size)>::block_size()
+            };
+        }
+        gen_match_on_block_cipher_encryption_instance!(self, gen_block_cipher_block_len, _unused)
+    }
+
+    fn iv_len_for_mode(&self, mode: tpm2_interface::TpmiAlgCipherMode) -> usize {
+        macro_rules! gen_iv_len_for_mode_and_block_cipher {
+            (Ecb $(, $($args:tt),*)?) => {
+                0
+            };
+            ($mode_id:tt,
+              $block_alg_id:ident,
+              $key_size:tt,
+              _unused) => {
+                <mode_to_enc_impl!($mode_id, block_cipher_to_enc_impl!($block_alg_id, $key_size))>::iv_size()
+            };
+        }
+
+        gen_match_on_mode!(
+            mode,
+            gen_match_on_block_cipher_encryption_instance,
+            self,
+            gen_iv_len_for_mode_and_block_cipher,
+            _unused
+        )
+    }
+
+    #[inline(never)]
+    fn encrypt<'a, 'b>(
+        &self,
+        mode: tpm2_interface::TpmiAlgCipherMode,
+        iv: &[u8],
+        dst: &mut dyn CryptoWalkableIoSlicesMutIter<'a>,
+        src: &mut dyn CryptoWalkableIoSlicesIter<'b>,
+        iv_out: Option<&mut [u8]>,
+    ) -> Result<(), CryptoError> {
+        // Generate code snippet for the block transform callback passed to
+        // transform_next_blocks() for (external) mode encryption
+        // implementations implementing the cipher::BlockEncryptMut trait.
+        macro_rules! gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet {
+            ($mode_transform_impl_instance:ident) => {
+                |dst_block: &mut [u8], src_block: Option<&[u8]>| {
+                    if let Some(src_block) = src_block {
+                        $mode_transform_impl_instance.encrypt_block_b2b_mut(src_block.into(), dst_block.into());
+                    } else {
+                        $mode_transform_impl_instance.encrypt_block_mut(dst_block.into());
+                    }
+                }
+            };
+        }
+
+        macro_rules! gen_encrypt_with_mode {
+            (Ctr $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Ctr,
+                    true,
+                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_iv_state_trait_mode_grab_iv_snippet,
+                    dst,
+                    src,
+                    iv,
+                    iv_out
+                )
+            };
+            (Ofb $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Ofb,
+                    true,
+                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_iv_state_trait_mode_grab_iv_snippet,
+                    dst,
+                    src,
+                    iv,
+                    iv_out
+                )
+            };
+            (Cbc $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Cbc,
+                    false,
+                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_iv_state_trait_mode_grab_iv_snippet,
+                    dst,
+                    src,
+                    iv,
+                    iv_out
+                )
+            };
+            (Cfb $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Cfb,
+                    true,
+                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_iv_state_trait_mode_grab_iv_snippet,
+                    dst,
+                    src,
+                    iv,
+                    iv_out
+                )
+            };
+            (Ecb $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Ecb,
+                    false,
+                    gen_inner_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_grab_iv_nop_snippet,
+                    dst,
+                    src,
+                    iv,
+                    iv_out
+                )
+            };
+        }
+
+        gen_match_on_mode!(mode, gen_encrypt_with_mode);
+
+        Ok(())
+    }
+
+    fn encrypt_in_place<'a, 'b, DI: CryptoPeekableIoSlicesMutIter<'a>>(
+        &self,
+        mode: tpm2_interface::TpmiAlgCipherMode,
+        iv: &[u8],
+        mut dst: DI,
+        iv_out: Option<&mut [u8]>,
+    ) -> Result<(), CryptoError> {
+        // Generate code snippet for the block transform callback passed to
+        // transform_next_blocks_in_place() for (external) mode implementations
+        // implementing the cipher::BlockEncryptMut trait.
+        macro_rules! gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet {
+            ($mode_transform_impl_instance:ident) => {
+                |dst_block: &mut [u8]| {
+                    $mode_transform_impl_instance.encrypt_block_mut(dst_block.into());
+                }
+            };
+        }
+
+        macro_rules! gen_encrypt_with_mode {
+            (Ctr $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Ctr,
+                    true,
+                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_iv_state_trait_mode_grab_iv_snippet,
+                    dst,
+                    iv,
+                    iv_out
+                )
+            };
+            (Ofb $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Ofb,
+                    true,
+                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_iv_state_trait_mode_grab_iv_snippet,
+                    dst,
+                    iv,
+                    iv_out
+                )
+            };
+            (Cbc $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Cbc,
+                    false,
+                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_iv_state_trait_mode_grab_iv_snippet,
+                    dst,
+                    iv,
+                    iv_out
+                )
+            };
+            (Cfb $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Cfb,
+                    true,
+                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_iv_state_trait_mode_grab_iv_snippet,
+                    dst,
+                    iv,
+                    iv_out
+                )
+            };
+            (Ecb $(, $($args:tt),*)?) => {
+                gen_match_on_block_cipher_encryption_instance!(
+                    &self,
+                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
+                    block_cipher_impl_instance,
+                    Ecb,
+                    false,
+                    gen_inner_init_trait_mode_encryptor_impl_instance_new_snippet,
+                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
+                    gen_grab_iv_nop_snippet,
+                    dst,
+                    iv,
+                    iv_out
+                )
+            };
+        }
+
+        gen_match_on_mode!(mode, gen_encrypt_with_mode);
+
+        Ok(())
+    }
+}
+
+/// A symmetric block cipher instance providing decryption functionality.
+///
+/// A symmetric block cipher instance is associated with a specific [block
+/// cipher algorithm](SymBlockCipherAlg) and a key.  It may get instantiated
+/// either [directly from a raw key byte slice](Self::new) or from a
+/// [`SymBlockCipherKey`](SymBlockCipherKey::instantiate_block_cipher).
+///
+/// Decryption requests are handled through [`decrypt()`](Self::decrypt)/
+/// [`decrypt_in_place()`](Self::decrypt_in_place). These accept a [block cipher
+/// chaining mode](tpm2_interface::TpmiAlgCipherMode) to be used for the
+/// request. Decryption operations don't alter the instance's state and a single
+/// instance may be used for the decryption of multiple independent message.
+pub struct SymBlockCipherDecryptionInstance {
+    state: Box<SymBlockCipherDecryptionInstanceState>,
+}
+
+impl SymBlockCipherDecryptionInstance {
+    /// Instantiate a `SymBlockCipherDecryptionInstance` from a pair of
+    /// [symmetric block cipher algorithm identifier](SymBlockCipherAlg) and
+    /// a raw key byte slice.
+    ///
+    /// # Arguments:
+    /// * `alg_id` - The [symmetric block cipher algorithm](SymBlockCipherAlg)
+    ///   to be used for this instance.
+    /// * `key` - The raw key bytes. It's length must match the [expected key
+    ///   length](SymBlockCipherAlg::key_len) for `alg` or an error will get
+    ///   returned.
+    #[inline(never)]
+    pub fn new(alg_id: SymBlockCipherAlg, key: &[u8]) -> Result<Self, CryptoError> {
+        Ok(Self {
+            state: SymBlockCipherDecryptionInstanceState::new(alg_id, key)?,
+        })
+    }
+
+    /// Try to clone a `SymBlockCipherDecryptionInstance`.
+    #[inline(never)]
+    pub fn try_clone(&self) -> Result<Self, CryptoError> {
+        Ok(Self {
+            state: box_try_new_with(
+                || -> Result<SymBlockCipherDecryptionInstanceState, convert::Infallible> {
+                    Ok(self.state.deref().clone())
+                },
+            )?,
+        })
+    }
+
+    /// Obtain the instance's associated block cipher algorithm's block length.
+    ///
+    /// Equivalent to
+    /// [`SymBlockCipherAlg::block_len()`](SymBlockCipherAlg::block_len).
+    pub fn block_len(&self) -> usize {
+        self.state.block_len()
+    }
+
+    /// Determine the IV length for the use of the
+    /// `SymBlockCipherDecryptionInstance` with a given [block cipher
+    /// chaining mode](tpm2_interface::TpmiAlgCipherMode).
+    ///
+    /// Equivalent to
+    /// [`SymBlockCipherAlg::iv_len_for_mode()`](SymBlockCipherAlg::iv_len_for_mode).
+    pub fn iv_len_for_mode(&self, mode: tpm2_interface::TpmiAlgCipherMode) -> usize {
+        self.state.iv_len_for_mode(mode)
+    }
 
     /// Decrypt with a specified [block cipher chaining
     /// mode](tpm2_interface::TpmiAlgCipherMode).
@@ -674,172 +1523,150 @@ impl SymBlockCipherInstance {
 // All supported block cipher implementations possibly wrapped implement
 // ZeroizeOnDrop.
 #[cfg(feature = "zeroize")]
-impl zeroize::ZeroizeOnDrop for SymBlockCipherInstance {}
+impl zeroize::ZeroizeOnDrop for SymBlockCipherDecryptionInstance {}
 
 #[derive(Clone)]
-enum SymBlockCipherInstanceState {
+enum SymBlockCipherDecryptionInstanceState {
     #[cfg(feature = "aes")]
-    Aes128(block_cipher_to_impl!(Aes, 128)),
+    Aes128(block_cipher_to_dec_impl!(Aes, 128)),
     #[cfg(feature = "aes")]
-    Aes192(block_cipher_to_impl!(Aes, 192)),
+    Aes192(block_cipher_to_dec_impl!(Aes, 192)),
     #[cfg(feature = "aes")]
-    Aes256(block_cipher_to_impl!(Aes, 256)),
+    Aes256(block_cipher_to_dec_impl!(Aes, 256)),
     #[cfg(feature = "camellia")]
-    Camellia128(block_cipher_to_impl!(Camellia, 128)),
+    Camellia128(block_cipher_to_dec_impl!(Camellia, 128)),
     #[cfg(feature = "camellia")]
-    Camellia192(block_cipher_to_impl!(Camellia, 192)),
+    Camellia192(block_cipher_to_dec_impl!(Camellia, 192)),
     #[cfg(feature = "camellia")]
-    Camellia256(block_cipher_to_impl!(Camellia, 256)),
+    Camellia256(block_cipher_to_dec_impl!(Camellia, 256)),
     #[cfg(feature = "sm4")]
-    Sm4_128(block_cipher_to_impl!(Sm4, 128)),
+    Sm4_128(block_cipher_to_dec_impl!(Sm4, 128)),
 }
 
-macro_rules! gen_match_on_block_cipher_instance {
+macro_rules! gen_match_on_block_cipher_decryption_instance {
     ($block_cipher_instance_value:expr, $m:ident, $block_cipher_impl_instance:ident $(, $($args:tt),*)?) => {
         match $block_cipher_instance_value {
             #[cfg(feature = "aes")]
-            SymBlockCipherInstanceState::Aes128($block_cipher_impl_instance) => {
+            SymBlockCipherDecryptionInstanceState::Aes128($block_cipher_impl_instance) => {
                 $m!($($($args),*,)? Aes, 128, $block_cipher_impl_instance)
             },
             #[cfg(feature = "aes")]
-            SymBlockCipherInstanceState::Aes192($block_cipher_impl_instance) => {
+            SymBlockCipherDecryptionInstanceState::Aes192($block_cipher_impl_instance) => {
                 $m!($($($args),*,)? Aes, 192, $block_cipher_impl_instance)
             },
             #[cfg(feature = "aes")]
-            SymBlockCipherInstanceState::Aes256($block_cipher_impl_instance) => {
+            SymBlockCipherDecryptionInstanceState::Aes256($block_cipher_impl_instance) => {
                 $m!($($($args),*,)? Aes, 256, $block_cipher_impl_instance)
             },
             #[cfg(feature = "camellia")]
-            SymBlockCipherInstanceState::Camellia128($block_cipher_impl_instance) => {
+            SymBlockCipherDecryptionInstanceState::Camellia128($block_cipher_impl_instance) => {
                 $m!($($($args),*,)? Camellia, 128, $block_cipher_impl_instance)
             },
             #[cfg(feature = "camellia")]
-            SymBlockCipherInstanceState::Camellia192($block_cipher_impl_instance) => {
+            SymBlockCipherDecryptionInstanceState::Camellia192($block_cipher_impl_instance) => {
                 $m!($($($args),*,)? Camellia, 192, $block_cipher_impl_instance)
             },
             #[cfg(feature = "camellia")]
-            SymBlockCipherInstanceState::Camellia256($block_cipher_impl_instance) => {
+            SymBlockCipherDecryptionInstanceState::Camellia256($block_cipher_impl_instance) => {
                 $m!($($($args),*,)? Camellia, 256, $block_cipher_impl_instance)
             },
             #[cfg(feature = "sm4")]
-            SymBlockCipherInstanceState::Sm4_128($block_cipher_impl_instance) => {
+            SymBlockCipherDecryptionInstanceState::Sm4_128($block_cipher_impl_instance) => {
                 $m!($($($args),*,)? Sm4, 128, $block_cipher_impl_instance)
             },
         }
     };
 }
 
-macro_rules! block_alg_id_to_instance_variant {
+macro_rules! block_alg_id_to_decryption_instance_variant {
     (Aes, 128) => {
-        SymBlockCipherInstanceState::Aes128
+        SymBlockCipherDecryptionInstanceState::Aes128
     };
     (Aes, 192) => {
-        SymBlockCipherInstanceState::Aes192
+        SymBlockCipherDecryptionInstanceState::Aes192
     };
     (Aes, 256) => {
-        SymBlockCipherInstanceState::Aes256
+        SymBlockCipherDecryptionInstanceState::Aes256
     };
     (Camellia, 128) => {
-        SymBlockCipherInstanceState::Camellia128
+        SymBlockCipherDecryptionInstanceState::Camellia128
     };
     (Camellia, 192) => {
-        SymBlockCipherInstanceState::Camellia192
+        SymBlockCipherDecryptionInstanceState::Camellia192
     };
     (Camellia, 256) => {
-        SymBlockCipherInstanceState::Camellia256
+        SymBlockCipherDecryptionInstanceState::Camellia256
     };
     (Sm4, 128) => {
-        SymBlockCipherInstanceState::Sm4_128
+        SymBlockCipherDecryptionInstanceState::Sm4_128
     };
 }
 
-// Used internally from multiple functions of SymBlockCipherInstanceState. We
-// cannot have macro definitions in impl {} blocks, so it's here.
-macro_rules! sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher {
-    ($mode_id:tt, $mode_supports_partial_last_block:literal, $gen_mode_transform_new_impl_instance_snippet:ident,
-             $gen_mode_block_transform_cb_snippet:ident,
-             $gen_mode_transform_grab_iv_snippet:ident,
-             $dst_io_slices:ident,
-             $src_io_slices:ident,
-             $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-        let block_len = <block_cipher_to_impl!($block_alg_id, $key_size)>::block_size();
-        let dst_len = $dst_io_slices.total_len()?;
-        if !$mode_supports_partial_last_block && dst_len % block_len != 0 {
-            return Err(CryptoError::InvalidMessageLength);
-        } else if $src_io_slices.total_len()? != dst_len {
-            return Err(CryptoError::Internal);
-        }
-
-        let mut scratch_block_buf = zeroize::Zeroizing::from(Vec::new());
-        if !$dst_io_slices.all_aligned_to(block_len)? || !$src_io_slices.all_aligned_to(block_len)? {
-            scratch_block_buf = try_alloc_zeroizing_vec(block_len)?;
-        }
-
-        let mut mode_transform_impl_instance = $gen_mode_transform_new_impl_instance_snippet!(
-            $mode_id,
-            $block_alg_id,
-            $key_size,
-            $block_cipher_impl_instance
-        );
-
-        loop {
-            if !Self::transform_next_blocks::<$mode_supports_partial_last_block, _>(
-                $dst_io_slices,
-                $src_io_slices,
-                $gen_mode_block_transform_cb_snippet!(mode_transform_impl_instance),
-                block_len,
-                &mut scratch_block_buf,
-            )? {
-                break;
+// Generate code snippet for the instantiation of (external) mode decryption
+// implementations implementing the crypto_common::InnerIvInit trait.
+//
+// Common to SymBlockCipherDecryptionInstanceState::decrypt() and
+// ::decrypt_in_place().
+#[allow(unused_macros)]
+macro_rules! gen_inner_iv_init_trait_mode_decryptor_impl_instance_new_snippet {
+    ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident, $iv:ident, $iv_out:ident) => {{
+        // Don't use the convenience InnerIvInit::from_slice() for instantiating the
+        // block mode, but wrap the IV explictly first to have all possible
+        // error paths out of the way, thereby enabling a zero copy construction
+        // right onto the stack.
+        let iv_len = <mode_to_dec_impl!($mode_id, block_cipher_to_dec_impl!($block_alg_id, $key_size))
+                                                                                         as crypto_common::IvSizeUser>
+                                                                                     ::IvSize::to_usize();
+        if $iv.len() != iv_len {
+            return Err(CryptoError::InvalidIV);
+        } else if let Some(iv_out) = &$iv_out {
+            if iv_out.len() != iv_len {
+                return Err(CryptoError::Internal);
             }
         }
 
-        $gen_mode_transform_grab_iv_snippet!(mode_transform_impl_instance);
+        let iv = crypto_common::Iv::<
+                        mode_to_dec_impl!($mode_id, block_cipher_to_dec_impl!($block_alg_id, $key_size)),
+                    >::from_slice($iv);
+
+        // Note that the block cipher instance is a reference, which implements
+        // crypto_common's BlockDecrypt, hence BlockDecryptMut. This reduces the mode
+        // instance's size on the stack significantly.
+        <mode_to_dec_impl!($mode_id, block_cipher_to_dec_impl!($block_alg_id, $key_size))>::inner_iv_init(
+            &$block_cipher_impl_instance,
+            iv,
+        )
     }};
 }
 
-// Used internally from multiple functions of SymBlockCipherInstanceState. We
-// cannot have macro definitions in impl {} blocks, so it's here.
-macro_rules! sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher {
-    ($mode_id:tt, $mode_supports_partial_last_block:literal, $gen_mode_transform_new_impl_instance_snippet:ident,
-             $gen_mode_block_transform_cb_snippet:ident,
-             $gen_mode_transform_grab_iv_snippet:ident,
-             $dst_io_slices:ident,
-             $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-        let block_len = <block_cipher_to_impl!($block_alg_id, $key_size)>::block_size();
-        let dst_len = $dst_io_slices.total_len()?;
-        if !$mode_supports_partial_last_block && dst_len % block_len != 0 {
-            return Err(CryptoError::InvalidMessageLength);
-        }
-
-        let mut scratch_block_buf = zeroize::Zeroizing::from(Vec::new());
-        if !$dst_io_slices.all_aligned_to(block_len)? {
-            scratch_block_buf = try_alloc_zeroizing_vec(block_len)?;
-        }
-
-        let mut mode_transform_impl_instance = $gen_mode_transform_new_impl_instance_snippet!(
-            $mode_id,
-            $block_alg_id,
-            $key_size,
-            $block_cipher_impl_instance
-        );
-
-        loop {
-            if !Self::transform_next_blocks_in_place::<$mode_supports_partial_last_block, _, _>(
-                &mut $dst_io_slices,
-                $gen_mode_block_transform_cb_snippet!(mode_transform_impl_instance),
-                block_len,
-                &mut scratch_block_buf,
-            )? {
-                break;
+// Generate code snippet for the instantiation of (external) mode decryption
+// implementations implementing the crypto_common::InnerInit trait.
+// Generate code snippet for the instantiation of (external) mode decryption
+// implementations implementing the crypto_common::InnerIvInit trait.
+//
+// Common to SymBlockCipherDecryptionInstanceState::decrypt() and
+// ::decrypt_in_place().
+#[allow(unused_macros)]
+macro_rules! gen_inner_init_trait_mode_decryptor_impl_instance_new_snippet {
+    ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident, $iv:ident, $iv_out:ident) => {{
+        if $iv.len() != 0 {
+            return Err(CryptoError::InvalidIV);
+        } else if let Some(iv_out) = $iv_out {
+            if iv_out.len() != 0 {
+                return Err(CryptoError::Internal);
             }
         }
 
-        $gen_mode_transform_grab_iv_snippet!(mode_transform_impl_instance);
+        // Note that the block cipher instance is a reference, which implements
+        // crypto_common's BlockDecrypt, hence BlockDecryptMut. This reduces the mode
+        // instance's size on the stack significantly.
+        <mode_to_dec_impl!($mode_id, block_cipher_to_dec_impl!($block_alg_id, $key_size))>::inner_init(
+            $block_cipher_impl_instance,
+        )
     }};
 }
 
-impl SymBlockCipherInstanceState {
+impl SymBlockCipherDecryptionInstanceState {
     fn new(alg_id: SymBlockCipherAlg, key: &[u8]) -> Result<Box<Self>, CryptoError> {
         macro_rules! gen_block_alg_instantiate {
             ($block_alg_id:tt, $key_size:tt) => {{
@@ -847,15 +1674,15 @@ impl SymBlockCipherInstanceState {
                 // cipher, but wrap the key explictly first to have all possible error paths out of
                 // the way, thereby enabling a zero copy construction right into the Box' memory.
                 if key.len() !=
-                                <block_cipher_to_impl!($block_alg_id, $key_size) as crypto_common::KeySizeUser>
+                                <block_cipher_to_dec_impl!($block_alg_id, $key_size) as crypto_common::KeySizeUser>
                                     ::KeySize::to_usize() {
                                 return Err(CryptoError::KeySize);
                             }
-                let key = crypto_common::Key::<block_cipher_to_impl!($block_alg_id, $key_size)>::from_slice(key);
+                let key = crypto_common::Key::<block_cipher_to_dec_impl!($block_alg_id, $key_size)>::from_slice(key);
 
                 box_try_new_with(|| -> Result<Self, convert::Infallible> {
-                    Ok(block_alg_id_to_instance_variant!($block_alg_id, $key_size)(
-                        <block_cipher_to_impl!($block_alg_id, $key_size)>::new(key),
+                    Ok(block_alg_id_to_decryption_instance_variant!($block_alg_id, $key_size)(
+                        <block_cipher_to_dec_impl!($block_alg_id, $key_size)>::new(key),
                     ))
                 })?
             }};
@@ -864,179 +1691,15 @@ impl SymBlockCipherInstanceState {
         Ok(gen_match_on_block_cipher_alg!(alg_id, gen_block_alg_instantiate))
     }
 
-    fn transform_next_blocks<'a, 'b, const ENABLE_PARTIAL_LAST_BLOCK: bool, BT: FnMut(&mut [u8], Option<&[u8]>)>(
-        dst: &mut dyn CryptoWalkableIoSlicesMutIter<'a>,
-        src: &mut dyn CryptoWalkableIoSlicesIter<'b>,
-        mut block_transform: BT,
-        block_len: usize,
-        scratch_block_buf: &mut [u8],
-    ) -> Result<bool, CryptoError> {
-        debug_assert!(ENABLE_PARTIAL_LAST_BLOCK || dst.is_empty()? || dst.total_len()? >= block_len);
-        debug_assert_eq!(src.total_len()?, dst.total_len()?);
-        let first_dst_slice_len = dst.next_slice_len()?;
-        // Try to process a batch of multiple block cipher blocks at once.
-        if first_dst_slice_len >= 2 * block_len {
-            let first_src_slice_len = src.next_slice_len()?;
-            if first_src_slice_len >= 2 * block_len {
-                let batch_len = first_dst_slice_len.min(first_src_slice_len);
-                let batch_len = if block_len.is_pow2() {
-                    batch_len & !(block_len - 1)
-                } else {
-                    batch_len - (batch_len % block_len)
-                };
-                let batch_dst_slice = match dst.next_slice_mut(Some(batch_len))? {
-                    Some(batch_dst_slice) => batch_dst_slice,
-                    None => return Err(CryptoError::Internal),
-                };
-                let batch_src_slice = match src.next_slice(Some(batch_len))? {
-                    Some(batch_src_slice) => batch_src_slice,
-                    None => return Err(CryptoError::Internal),
-                };
-
-                let mut pos_in_batch_slice = 0;
-                while pos_in_batch_slice != batch_len {
-                    block_transform(
-                        &mut batch_dst_slice[pos_in_batch_slice..pos_in_batch_slice + block_len],
-                        Some(&batch_src_slice[pos_in_batch_slice..pos_in_batch_slice + block_len]),
-                    );
-                    pos_in_batch_slice += block_len
-                }
-                return Ok(true);
-            }
-        }
-
-        let first_dst_slice = match dst.next_slice_mut(Some(block_len))? {
-            Some(first_dst_slice) => first_dst_slice,
-            None => {
-                if !src.is_empty()? {
-                    return Err(CryptoError::Internal);
-                }
-                return Ok(false);
-            }
-        };
-        let first_src_slice = match src.next_slice(Some(block_len))? {
-            Some(first_src_slice) => first_src_slice,
-            None => return Err(CryptoError::Internal),
-        };
-        if first_src_slice.len() == block_len && first_dst_slice.len() == block_len {
-            block_transform(first_dst_slice, Some(first_src_slice));
-        } else {
-            debug_assert_eq!(scratch_block_buf.len(), block_len);
-            let mut src_block_len = first_src_slice.len();
-            scratch_block_buf[..src_block_len].copy_from_slice(first_src_slice);
-            src_block_len += io_slices::SingletonIoSliceMut::new(&mut scratch_block_buf[src_block_len..])
-                .map_infallible_err::<CryptoError>()
-                .copy_from_iter(src)?;
-            if src_block_len != block_len {
-                if !ENABLE_PARTIAL_LAST_BLOCK {
-                    return Err(CryptoError::Internal);
-                } else {
-                    scratch_block_buf[src_block_len..].fill(0);
-                }
-            } else if src_block_len < first_dst_slice.len() {
-                return Err(CryptoError::Internal);
-            }
-
-            block_transform(scratch_block_buf, None);
-
-            let mut dst_block_len = first_dst_slice.len();
-            first_dst_slice.copy_from_slice(&scratch_block_buf[..dst_block_len]);
-            dst_block_len += dst.copy_from_iter(
-                &mut io_slices::SingletonIoSlice::new(&scratch_block_buf[dst_block_len..src_block_len])
-                    .map_infallible_err(),
-            )?;
-            if dst_block_len != src_block_len {
-                return Err(CryptoError::Internal);
-            }
-        }
-
-        Ok(true)
-    }
-
-    fn transform_next_blocks_in_place<
-        'a,
-        'b,
-        const ENABLE_PARTIAL_LAST_BLOCK: bool,
-        BT: FnMut(&mut [u8], Option<&[u8]>),
-        DI: CryptoPeekableIoSlicesMutIter<'a>,
-    >(
-        dst: &mut DI,
-        mut block_transform: BT,
-        block_len: usize,
-        scratch_block_buf: &mut [u8],
-    ) -> Result<bool, CryptoError> {
-        debug_assert!(ENABLE_PARTIAL_LAST_BLOCK || dst.is_empty()? || dst.total_len()? >= block_len);
-        let first_dst_slice_len = dst.next_slice_len()?;
-        // Try to process a batch of multiple block cipher blocks at once.
-        if first_dst_slice_len >= 2 * block_len {
-            let batch_len = if block_len.is_pow2() {
-                first_dst_slice_len & !(block_len - 1)
-            } else {
-                first_dst_slice_len - (first_dst_slice_len % block_len)
-            };
-            let batch_dst_slice = match dst.next_slice_mut(Some(batch_len))? {
-                Some(batch_dst_slice) => batch_dst_slice,
-                None => return Err(CryptoError::Internal),
-            };
-
-            let mut pos_in_batch_slice = 0;
-            while pos_in_batch_slice != batch_len {
-                block_transform(
-                    &mut batch_dst_slice[pos_in_batch_slice..pos_in_batch_slice + block_len],
-                    None,
-                );
-                pos_in_batch_slice += block_len
-            }
-            return Ok(true);
-        }
-
-        let first_dst_slice = match dst.next_slice_mut(Some(block_len))? {
-            Some(first_dst_slice) => first_dst_slice,
-            None => {
-                return Ok(false);
-            }
-        };
-        if first_dst_slice.len() == block_len {
-            block_transform(first_dst_slice, None);
-        } else {
-            debug_assert_eq!(scratch_block_buf.len(), block_len);
-            let mut src_block_len = first_dst_slice.len();
-            scratch_block_buf[..src_block_len].copy_from_slice(first_dst_slice);
-            // When copying from the destination into the scratch buffer, retain the
-            // original IOSlicesMut, so that the result can later get written back again.
-            src_block_len += io_slices::SingletonIoSliceMut::new(&mut scratch_block_buf[src_block_len..])
-                .map_infallible_err()
-                .copy_from_iter(&mut dst.decoupled_borrow())?;
-            if src_block_len != block_len {
-                if !ENABLE_PARTIAL_LAST_BLOCK {
-                    return Err(CryptoError::Internal);
-                } else {
-                    scratch_block_buf[src_block_len..].fill(0);
-                }
-            }
-
-            block_transform(scratch_block_buf, None);
-
-            let mut dst_block_len = first_dst_slice.len();
-            first_dst_slice.copy_from_slice(&scratch_block_buf[..dst_block_len]);
-            dst_block_len += dst.copy_from_iter(
-                &mut io_slices::SingletonIoSlice::new(&scratch_block_buf[dst_block_len..]).map_infallible_err(),
-            )?;
-            debug_assert_eq!(dst_block_len, src_block_len);
-        }
-
-        Ok(true)
-    }
-
     fn block_len(&self) -> usize {
         macro_rules! gen_block_cipher_block_len {
             ($block_alg_id:ident,
              $key_size:tt,
              _unused) => {
-                <block_cipher_to_impl!($block_alg_id, $key_size)>::block_size()
+                <block_cipher_to_dec_impl!($block_alg_id, $key_size)>::block_size()
             };
         }
-        gen_match_on_block_cipher_instance!(self, gen_block_cipher_block_len, _unused)
+        gen_match_on_block_cipher_decryption_instance!(self, gen_block_cipher_block_len, _unused)
     }
 
     fn iv_len_for_mode(&self, mode: tpm2_interface::TpmiAlgCipherMode) -> usize {
@@ -1048,360 +1711,17 @@ impl SymBlockCipherInstanceState {
               $block_alg_id:ident,
               $key_size:tt,
               _unused) => {
-                <mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::iv_size()
+                <mode_to_dec_impl!($mode_id, block_cipher_to_dec_impl!($block_alg_id, $key_size))>::iv_size()
             };
         }
 
         gen_match_on_mode!(
             mode,
-            gen_match_on_block_cipher_instance,
+            gen_match_on_block_cipher_decryption_instance,
             self,
             gen_iv_len_for_mode_and_block_cipher,
             _unused
         )
-    }
-
-    #[inline(never)]
-    fn encrypt<'a, 'b>(
-        &self,
-        mode: tpm2_interface::TpmiAlgCipherMode,
-        iv: &[u8],
-        dst: &mut dyn CryptoWalkableIoSlicesMutIter<'a>,
-        src: &mut dyn CryptoWalkableIoSlicesIter<'b>,
-        iv_out: Option<&mut [u8]>,
-    ) -> Result<(), CryptoError> {
-        // Generate code snippet for the instantiation of (external) mode
-        // implementations implementing the crypto_common::InnerIvInit trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet {
-            ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-                // Don't use crypto_common's convenience InnerIvInit::from_slice() for
-                // instantiating the block mode, but wrap the IV explictly first to have
-                // all possible error paths out of the way, thereby enabling a zero copy
-                // construction right onto the stack.
-                let iv_len = <mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))
-                                                                                     as crypto_common::IvSizeUser>
-                                                                                 ::IvSize::to_usize();
-                if iv.len() != iv_len {
-                    return Err(CryptoError::InvalidIV);
-                } else if let Some(iv_out) = &iv_out {
-                    if iv_out.len() != iv_len {
-                        return Err(CryptoError::Internal);
-                    }
-                }
-
-                let iv = crypto_common::Iv::<
-                    mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size)),
-                >::from_slice(iv);
-
-                // Note that the block cipher instance is a reference, which implements
-                // crypto_common's BlockEncrypt, hence BlockEncryptMut. This reduces the mode
-                // instance's size on the stack significantly.
-                <mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::inner_iv_init(
-                    $block_cipher_impl_instance,
-                    iv,
-                )
-            }};
-        }
-
-        // Generate code snippet for the instantiation of (external) mode
-        // implementations implementing the crypto_common::InnerInit trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_inner_init_trait_mode_encryptor_impl_instance_new_snippet {
-            ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-                if iv.len() != 0 {
-                    return Err(CryptoError::InvalidIV);
-                } else if let Some(iv_out) = iv_out {
-                    if iv_out.len() != 0 {
-                        return Err(CryptoError::Internal);
-                    }
-                }
-
-                // Note that the block cipher instance is a reference, which implements
-                // crypto_common's BlockEncrypt, hence BlockEncryptMut. This reduces the mode
-                // instance's size on the stack significantly.
-                <mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::inner_init(
-                    $block_cipher_impl_instance,
-                )
-            }};
-        }
-
-        // Generate code snippet for the block transform callback passed to
-        // Self::transform_next_blocks() for (external) mode implementations
-        // implementing the cipher::BlockEncryptMut trait.
-        macro_rules! gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet {
-            ($mode_transform_impl_instance:ident) => {
-                |dst_block: &mut [u8], src_block: Option<&[u8]>| {
-                    if let Some(src_block) = src_block {
-                        $mode_transform_impl_instance.encrypt_block_b2b_mut(src_block.into(), dst_block.into());
-                    } else {
-                        $mode_transform_impl_instance.encrypt_block_mut(dst_block.into());
-                    }
-                }
-            };
-        }
-
-        // Generate code snippet for obtaining the IV from for (external) mode
-        // implementations implementing the cipher::IvState trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_iv_state_trait_mode_grab_iv_snippet {
-            ($mode_transform_impl_instance:ident) => {{
-                if let Some(iv_out) = iv_out {
-                    iv_out.copy_from_slice($mode_transform_impl_instance.iv_state().deref());
-                }
-            }};
-        }
-
-        // Generate nop code snippet for obtaining the IV from modes with no IV.
-        #[allow(unused_macros)]
-        macro_rules! gen_grab_iv_nop_snippet {
-            ($mode_transform_impl_instance:ident) => {};
-        }
-
-        macro_rules! gen_encrypt_with_mode {
-            (Ctr $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Ctr,
-                    true,
-                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst,
-                    src
-                )
-            };
-            (Ofb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Ofb,
-                    true,
-                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst,
-                    src
-                )
-            };
-            (Cbc $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Cbc,
-                    false,
-                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst,
-                    src
-                )
-            };
-            (Cfb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Cfb,
-                    true,
-                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst,
-                    src
-                )
-            };
-            (Ecb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Ecb,
-                    false,
-                    gen_inner_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_grab_iv_nop_snippet,
-                    dst,
-                    src
-                )
-            };
-        }
-
-        gen_match_on_mode!(mode, gen_encrypt_with_mode);
-
-        Ok(())
-    }
-
-    fn encrypt_in_place<'a, 'b, DI: CryptoPeekableIoSlicesMutIter<'a>>(
-        &self,
-        mode: tpm2_interface::TpmiAlgCipherMode,
-        iv: &[u8],
-        mut dst: DI,
-        iv_out: Option<&mut [u8]>,
-    ) -> Result<(), CryptoError> {
-        // Generate code snippet for the instantiation of (external) mode
-        // implementations implementing the crypto_common::InnerIvInit trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet {
-            ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-                // Don't use crypto_common's convenience InnerIvInit::from_slice() for
-                // instantiating the block mode, but wrap the IV explictly first to have
-                // all possible error paths out of the way, thereby enabling a zero copy
-                // construction right onto the stack.
-                let iv_len = <mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))
-                                                                                     as crypto_common::IvSizeUser>
-                                                                                 ::IvSize::to_usize();
-                if iv.len() != iv_len {
-                    return Err(CryptoError::InvalidIV);
-                } else if let Some(iv_out) = &iv_out {
-                    if iv_out.len() != iv_len {
-                        return Err(CryptoError::Internal);
-                    }
-                }
-
-                let iv = crypto_common::Iv::<
-                    mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size)),
-                >::from_slice(iv);
-
-                // Note that the block cipher instance is a reference, which implements
-                // crypto_common's BlockEncrypt, hence BlockEncryptMut. This reduces the mode
-                // instance's size on the stack significantly.
-                <mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::inner_iv_init(
-                    $block_cipher_impl_instance,
-                    iv,
-                )
-            }};
-        }
-
-        // Generate code snippet for the instantiation of (external) mode
-        // implementations implementing the crypto_common::InnerInit trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_inner_init_trait_mode_encryptor_impl_instance_new_snippet {
-            ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-                if iv.len() != 0 {
-                    return Err(CryptoError::InvalidIV);
-                } else if let Some(iv_out) = iv_out {
-                    if iv_out.len() != 0 {
-                        return Err(CryptoError::Internal);
-                    }
-                }
-
-                // Note that the block cipher instance is a reference, which implements
-                // crypto_common's BlockEncrypt, hence BlockEncryptMut. This reduces the mode
-                // instance's size on the stack significantly.
-                <mode_to_enc_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::inner_init(
-                    $block_cipher_impl_instance,
-                )
-            }};
-        }
-
-        // Generate code snippet for the block transform callback passed to
-        // Self::transform_next_blocks_in_place() for (external) mode implementations
-        // implementing the cipher::BlockEncryptMut trait.
-        macro_rules! gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet {
-            ($mode_transform_impl_instance:ident) => {
-                |dst_block: &mut [u8], src_block: Option<&[u8]>| {
-                    if let Some(src_block) = src_block {
-                        $mode_transform_impl_instance.encrypt_block_b2b_mut(src_block.into(), dst_block.into());
-                    } else {
-                        $mode_transform_impl_instance.encrypt_block_mut(dst_block.into());
-                    }
-                }
-            };
-        }
-
-        // Generate code snippet for obtaining the IV from for (external) mode
-        // implementations implementing the cipher::IvState trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_iv_state_trait_mode_grab_iv_snippet {
-            ($mode_transform_impl_instance:ident) => {{
-                if let Some(iv_out) = iv_out {
-                    iv_out.copy_from_slice($mode_transform_impl_instance.iv_state().deref());
-                }
-            }};
-        }
-
-        // Generate nop code snippet for obtaining the IV from modes with no IV.
-        #[allow(unused_macros)]
-        macro_rules! gen_grab_iv_nop_snippet {
-            ($mode_transform_impl_instance:ident) => {};
-        }
-
-        macro_rules! gen_encrypt_with_mode {
-            (Ctr $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Ctr,
-                    true,
-                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst
-                )
-            };
-            (Ofb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Ofb,
-                    true,
-                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst
-                )
-            };
-            (Cbc $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Cbc,
-                    false,
-                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst
-                )
-            };
-            (Cfb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Cfb,
-                    true,
-                    gen_inner_iv_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst
-                )
-            };
-            (Ecb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
-                    &self,
-                    sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
-                    block_cipher_impl_instance,
-                    Ecb,
-                    false,
-                    gen_inner_init_trait_mode_encryptor_impl_instance_new_snippet,
-                    gen_block_encrypt_trait_mode_block_encrypt_transform_cb_snippet,
-                    gen_grab_iv_nop_snippet,
-                    dst
-                )
-            };
-        }
-
-        gen_match_on_mode!(mode, gen_encrypt_with_mode);
-
-        Ok(())
     }
 
     #[inline(never)]
@@ -1413,64 +1733,8 @@ impl SymBlockCipherInstanceState {
         src: &mut dyn CryptoWalkableIoSlicesIter<'b>,
         iv_out: Option<&mut [u8]>,
     ) -> Result<(), CryptoError> {
-        // Generate code snippet for the instantiation of (external) mode
-        // implementations implementing the crypto_common::InnerIvInit trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_inner_iv_init_trait_mode_decryptor_impl_instance_new_snippet {
-            ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-                // Don't use the convenience InnerIvInit::from_slice() for instantiating the
-                // block mode, but wrap the IV explictly first to have all possible
-                // error paths out of the way, thereby enabling a zero copy construction
-                // right onto the stack.
-                let iv_len = <mode_to_dec_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))
-                                                                                     as crypto_common::IvSizeUser>
-                                                                                 ::IvSize::to_usize();
-                if iv.len() != iv_len {
-                    return Err(CryptoError::InvalidIV);
-                } else if let Some(iv_out) = &iv_out {
-                    if iv_out.len() != iv_len {
-                        return Err(CryptoError::Internal);
-                    }
-                }
-
-                let iv = crypto_common::Iv::<
-                    mode_to_dec_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size)),
-                >::from_slice(iv);
-
-                // Note that the block cipher instance is a reference, which implements
-                // crypto_common's BlockDecrypt, hence BlockDecryptMut. This reduces the mode
-                // instance's size on the stack significantly.
-                <mode_to_dec_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::inner_iv_init(
-                    &$block_cipher_impl_instance,
-                    iv,
-                )
-            }};
-        }
-
-        // Generate code snippet for the instantiation of (external) mode
-        // implementations implementing the crypto_common::InnerInit trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_inner_init_trait_mode_decryptor_impl_instance_new_snippet {
-            ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-                if iv.len() != 0 {
-                    return Err(CryptoError::InvalidIV);
-                } else if let Some(iv_out) = iv_out {
-                    if iv_out.len() != 0 {
-                        return Err(CryptoError::Internal);
-                    }
-                }
-
-                // Note that the block cipher instance is a reference, which implements
-                // crypto_common's BlockDecrypt, hence BlockDecryptMut. This reduces the mode
-                // instance's size on the stack significantly.
-                <mode_to_dec_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::inner_init(
-                    $block_cipher_impl_instance,
-                )
-            }};
-        }
-
         // Generate code snippet for the block transform callback passed to
-        // Self::transform_next_blocks() for (external) mode implementations
+        // transform_next_blocks() for (external) mode implementations
         // implementing the cipher::BlockDecryptMut trait.
         macro_rules! gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet {
             ($mode_transform_impl_instance:ident) => {
@@ -1484,26 +1748,9 @@ impl SymBlockCipherInstanceState {
             };
         }
 
-        // Generate code snippet for obtaining the IV from for (external) mode
-        // implementations implementing the cipher::IvState trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_iv_state_trait_mode_grab_iv_snippet {
-            ($mode_transform_impl_instance:ident) => {{
-                if let Some(iv_out) = iv_out {
-                    iv_out.copy_from_slice($mode_transform_impl_instance.iv_state().deref());
-                }
-            }};
-        }
-
-        // Generate nop code snippet for obtaining the IV from modes with no IV.
-        #[allow(unused_macros)]
-        macro_rules! gen_grab_iv_nop_snippet {
-            ($mode_transform_impl_instance:ident) => {};
-        }
-
         macro_rules! gen_decrypt_with_mode {
             (Ctr $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1513,11 +1760,13 @@ impl SymBlockCipherInstanceState {
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_iv_state_trait_mode_grab_iv_snippet,
                     dst,
-                    src
+                    src,
+                    iv,
+                    iv_out
                 )
             };
             (Ofb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1527,11 +1776,13 @@ impl SymBlockCipherInstanceState {
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_iv_state_trait_mode_grab_iv_snippet,
                     dst,
-                    src
+                    src,
+                    iv,
+                    iv_out
                 )
             };
             (Cbc $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1541,11 +1792,13 @@ impl SymBlockCipherInstanceState {
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_iv_state_trait_mode_grab_iv_snippet,
                     dst,
-                    src
+                    src,
+                    iv,
+                    iv_out
                 )
             };
             (Cfb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1555,11 +1808,13 @@ impl SymBlockCipherInstanceState {
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_iv_state_trait_mode_grab_iv_snippet,
                     dst,
-                    src
+                    src,
+                    iv,
+                    iv_out
                 )
             };
             (Ecb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1569,7 +1824,9 @@ impl SymBlockCipherInstanceState {
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_grab_iv_nop_snippet,
                     dst,
-                    src
+                    src,
+                    iv,
+                    iv_out
                 )
             };
         }
@@ -1586,97 +1843,20 @@ impl SymBlockCipherInstanceState {
         mut dst: DI,
         iv_out: Option<&mut [u8]>,
     ) -> Result<(), CryptoError> {
-        // Generate code snippet for the instantiation of (external) mode
-        // implementations implementing the crypto_common::InnerIvInit trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_inner_iv_init_trait_mode_decryptor_impl_instance_new_snippet {
-            ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-                // Don't use crypto_common's convenience InnerIvInit::from_slice() for
-                // instantiating the block mode, but wrap the IV explictly first to have
-                // all possible error paths out of the way, thereby enabling a zero copy
-                // construction right onto the stack.
-                let iv_len = <mode_to_dec_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))
-                                                                                     as crypto_common::IvSizeUser>
-                                                                                 ::IvSize::to_usize();
-                if iv.len() != iv_len {
-                    return Err(CryptoError::InvalidIV);
-                } else if let Some(iv_out) = &iv_out {
-                    if iv_out.len() != iv_len {
-                        return Err(CryptoError::Internal);
-                    }
-                }
-
-                let iv = crypto_common::Iv::<
-                    mode_to_dec_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size)),
-                >::from_slice(iv);
-
-                // Note that the block cipher instance is a reference, which implements
-                // crypto_common's BlockDecrypt, hence BlockDecryptMut. This reduces the mode
-                // instance's size on the stack significantly.
-                <mode_to_dec_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::inner_iv_init(
-                    $block_cipher_impl_instance,
-                    iv,
-                )
-            }};
-        }
-
-        // Generate code snippet for the instantiation of (external) mode
-        // implementations implementing the crypto_common::InnerInit trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_inner_init_trait_mode_decryptor_impl_instance_new_snippet {
-            ($mode_id:tt, $block_alg_id:tt, $key_size:tt, $block_cipher_impl_instance:ident) => {{
-                if iv.len() != 0 {
-                    return Err(CryptoError::InvalidIV);
-                } else if let Some(iv_out) = iv_out {
-                    if iv_out.len() != 0 {
-                        return Err(CryptoError::Internal);
-                    }
-                }
-
-                // Note that the block cipher instance is a reference, which implements
-                // crypto_common's BlockDecrypt, hence BlockDecryptMut. This reduces the mode
-                // instance's size on the stack significantly.
-                <mode_to_dec_impl!($mode_id, block_cipher_to_impl!($block_alg_id, $key_size))>::inner_init(
-                    $block_cipher_impl_instance,
-                )
-            }};
-        }
-
         // Generate code snippet for the block transform callback passed to
-        // Self::transform_next_blocks_in_place() for (external) mode implementations
+        // transform_next_blocks_in_place() for (external) mode implementations
         // implementing the cipher::BlockDecryptMut trait.
         macro_rules! gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet {
             ($mode_transform_impl_instance:ident) => {
-                |dst_block: &mut [u8], src_block: Option<&[u8]>| {
-                    if let Some(src_block) = src_block {
-                        $mode_transform_impl_instance.decrypt_block_b2b_mut(src_block.into(), dst_block.into());
-                    } else {
-                        $mode_transform_impl_instance.decrypt_block_mut(dst_block.into());
-                    }
+                |dst_block: &mut [u8]| {
+                    $mode_transform_impl_instance.decrypt_block_mut(dst_block.into());
                 }
             };
         }
 
-        // Generate code snippet for obtaining the IV from for (external) mode
-        // implementations implementing the cipher::IvState trait.
-        #[allow(unused_macros)]
-        macro_rules! gen_iv_state_trait_mode_grab_iv_snippet {
-            ($mode_transform_impl_instance:ident) => {{
-                if let Some(iv_out) = iv_out {
-                    iv_out.copy_from_slice($mode_transform_impl_instance.iv_state().deref());
-                }
-            }};
-        }
-
-        // Generate nop code snippet for obtaining the IV from modes with no IV.
-        #[allow(unused_macros)]
-        macro_rules! gen_grab_iv_nop_snippet {
-            ($mode_transform_impl_instance:ident) => {};
-        }
-
         macro_rules! gen_decrypt_with_mode {
             (Ctr $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1685,11 +1865,13 @@ impl SymBlockCipherInstanceState {
                     gen_inner_iv_init_trait_mode_decryptor_impl_instance_new_snippet,
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst
+                    dst,
+                    iv,
+                    iv_out
                 )
             };
             (Ofb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1698,11 +1880,13 @@ impl SymBlockCipherInstanceState {
                     gen_inner_iv_init_trait_mode_decryptor_impl_instance_new_snippet,
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst
+                    dst,
+                    iv,
+                    iv_out
                 )
             };
             (Cbc $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1711,11 +1895,13 @@ impl SymBlockCipherInstanceState {
                     gen_inner_iv_init_trait_mode_decryptor_impl_instance_new_snippet,
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst
+                    dst,
+                    iv,
+                    iv_out
                 )
             };
             (Cfb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1724,11 +1910,13 @@ impl SymBlockCipherInstanceState {
                     gen_inner_iv_init_trait_mode_decryptor_impl_instance_new_snippet,
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_iv_state_trait_mode_grab_iv_snippet,
-                    dst
+                    dst,
+                    iv,
+                    iv_out
                 )
             };
             (Ecb $(, $($args:tt),*)?) => {
-                gen_match_on_block_cipher_instance!(
+                gen_match_on_block_cipher_decryption_instance!(
                     &self,
                     sym_block_cipher_instance_impl_gen_transform_blocks_in_place_with_mode_and_block_cipher,
                     block_cipher_impl_instance,
@@ -1737,7 +1925,9 @@ impl SymBlockCipherInstanceState {
                     gen_inner_init_trait_mode_decryptor_impl_instance_new_snippet,
                     gen_block_decrypt_trait_mode_block_decrypt_transform_cb_snippet,
                     gen_grab_iv_nop_snippet,
-                    dst
+                    dst,
+                    iv,
+                    iv_out
                 )
             };
         }
@@ -1779,7 +1969,7 @@ fn test_encrypt_decrypt(mode: tpm2_interface::TpmiAlgCipherMode, block_cipher_al
     let key = vec![0xffu8; key_len];
     let key = SymBlockCipherKey::try_from((block_cipher_alg, key.as_slice())).unwrap();
 
-    let block_cipher_instance = key.instantiate_block_cipher().unwrap();
+    let block_cipher_encryption_instance = key.instantiate_block_cipher_enc().unwrap();
 
     let block_len = block_cipher_alg.block_len();
     let msg_len = if test_mode_supports_partial_last_block(mode) {
@@ -1792,7 +1982,7 @@ fn test_encrypt_decrypt(mode: tpm2_interface::TpmiAlgCipherMode, block_cipher_al
         *b = (i % u8::MAX as usize) as u8
     }
 
-    let iv_len = block_cipher_instance.iv_len_for_mode(mode);
+    let iv_len = block_cipher_encryption_instance.iv_len_for_mode(mode);
     let mut encrypted = vec![0u8; msg_len];
     let mut iv_out = vec![0xccu8; iv_len];
     // Encrypt in two steps for testing the intermediate IV extraction code.
@@ -1801,7 +1991,7 @@ fn test_encrypt_decrypt(mode: tpm2_interface::TpmiAlgCipherMode, block_cipher_al
         let r_len = r.len();
         let (src0, src1) = msg[r.clone()].split_at(r_len / 4);
         let (dst0, dst1) = encrypted[r].split_at_mut(r_len / 4 * 3);
-        block_cipher_instance
+        block_cipher_encryption_instance
             .encrypt(
                 mode,
                 &iv,
@@ -1814,6 +2004,7 @@ fn test_encrypt_decrypt(mode: tpm2_interface::TpmiAlgCipherMode, block_cipher_al
     assert_ne!(&msg, &encrypted);
 
     // Decrypt, also in two steps, and compare the result with the original message.
+    let block_cipher_decryption_instance = key.instantiate_block_cipher_dec().unwrap();
     let mut decrypted = vec![0u8; msg_len];
     let mut iv_out = vec![0xccu8; iv_len];
     // Encrypt in two steps for testing the intermediate IV extraction code.
@@ -1822,7 +2013,7 @@ fn test_encrypt_decrypt(mode: tpm2_interface::TpmiAlgCipherMode, block_cipher_al
         let r_len = r.len();
         let (src0, src1) = encrypted[r.clone()].split_at(r_len / 4);
         let (dst0, dst1) = decrypted[r].split_at_mut(r_len / 4 * 3);
-        block_cipher_instance
+        block_cipher_decryption_instance
             .decrypt(
                 mode,
                 &iv,
@@ -2158,7 +2349,7 @@ fn test_encrypt_decrypt_in_place(mode: tpm2_interface::TpmiAlgCipherMode, block_
     let key = vec![0xffu8; key_len];
     let key = SymBlockCipherKey::try_from((block_cipher_alg, key.as_slice())).unwrap();
 
-    let block_cipher_instance = key.instantiate_block_cipher().unwrap();
+    let block_cipher_encryption_instance = key.instantiate_block_cipher_enc().unwrap();
 
     let block_len = block_cipher_alg.block_len();
     let msg_len = if test_mode_supports_partial_last_block(mode) {
@@ -2171,7 +2362,7 @@ fn test_encrypt_decrypt_in_place(mode: tpm2_interface::TpmiAlgCipherMode, block_
         *b = (i % u8::MAX as usize) as u8
     }
 
-    let iv_len = block_cipher_instance.iv_len_for_mode(mode);
+    let iv_len = block_cipher_encryption_instance.iv_len_for_mode(mode);
     let mut dst = vec![0u8; msg_len];
     dst.copy_from_slice(&msg);
     let mut iv_out = vec![0xccu8; iv_len];
@@ -2180,7 +2371,7 @@ fn test_encrypt_decrypt_in_place(mode: tpm2_interface::TpmiAlgCipherMode, block_
         let iv = iv_out.clone();
         let r_len = r.len();
         let (dst0, dst1) = dst[r].split_at_mut(r_len / 4);
-        block_cipher_instance
+        block_cipher_encryption_instance
             .encrypt_in_place(
                 mode,
                 &iv,
@@ -2192,13 +2383,14 @@ fn test_encrypt_decrypt_in_place(mode: tpm2_interface::TpmiAlgCipherMode, block_
     assert_ne!(&msg, &dst);
 
     // Decrypt, also in two steps, and compare the result with the original message.
+    let block_cipher_decryption_instance = key.instantiate_block_cipher_dec().unwrap();
     let mut iv_out = vec![0xccu8; iv_len];
     // Encrypt in two steps for testing the intermediate IV extraction code.
     for r in [0..3 * block_len, 3 * block_len..msg_len] {
         let iv = iv_out.clone();
         let r_len = r.len();
         let (dst0, dst1) = dst[r].split_at_mut(r_len / 4 * 3);
-        block_cipher_instance
+        block_cipher_decryption_instance
             .decrypt_in_place(
                 mode,
                 &iv,
