@@ -105,6 +105,56 @@ pub enum SymBlockCipherAlg {
     Sm4(SymBlockCipherSm4KeySize),
 }
 
+/// Map pair of (symbolic block cipher, key size) to the block length.
+macro_rules! block_cipher_to_block_len {
+    (Aes, 128) => {
+        16
+    };
+    (Aes, 192) => {
+        16
+    };
+    (Aes, 256) => {
+        16
+    };
+    (Camellia, 128) => {
+        16
+    };
+    (Camellia, 192) => {
+        16
+    };
+    (Camellia, 256) => {
+        16
+    };
+    (Sm4, 128) => {
+        16
+    };
+}
+
+/// Map pair of (symbolic block cipher, key size) to the key length in bytes.
+macro_rules! block_cipher_to_key_len {
+    (Aes, 128) => {
+        16
+    };
+    (Aes, 192) => {
+        24
+    };
+    (Aes, 256) => {
+        32
+    };
+    (Camellia, 128) => {
+        16
+    };
+    (Camellia, 192) => {
+        24
+    };
+    (Camellia, 256) => {
+        32
+    };
+    (Sm4, 128) => {
+        16
+    };
+}
+
 /// Generate a `match {}` on SymBlockCipherAlg and invoke a macro in the body of
 /// each match arm.
 ///
@@ -179,32 +229,6 @@ macro_rules! block_cipher_to_sym_block_cipher_alg_variant {
     };
 }
 
-/// Map a pair of (symbolic block cipher, key size) to some implementation which
-/// can get queried for the key and block size.
-macro_rules! block_cipher_to_query_impl {
-    (Aes, 128) => {
-        aes::Aes128Enc
-    };
-    (Aes, 192) => {
-        aes::Aes192Enc
-    };
-    (Aes, 256) => {
-        aes::Aes256Enc
-    };
-    (Camellia, 128) => {
-        camellia::Camellia128
-    };
-    (Camellia, 192) => {
-        camellia::Camellia192
-    };
-    (Camellia, 256) => {
-        camellia::Camellia256
-    };
-    (Sm4, 128) => {
-        sm4::Sm4
-    };
-}
-
 macro_rules! gen_match_on_tpmi_alg_cipher_mode {
     ($mode_value:expr, $m:ident $(, $($args:tt),*)?) => {
         match $mode_value {
@@ -253,327 +277,23 @@ macro_rules! gen_match_on_tpmi_alg_cipher_mode_and_block_cipher_alg {
     };
 }
 
-/// Map a triplet of (mode, block cipher, key length) to a block cipher
-/// implementation suitable for encryption with that mode.
-macro_rules! enc_mode_and_block_cipher_to_block_cipher_impl {
-    (Ctr, Aes, 128) => {
-        aes::Aes128Enc
-    };
-    (Ctr, Aes, 192) => {
-        aes::Aes192Enc
-    };
-    (Ctr, Aes, 256) => {
-        aes::Aes256Enc
-    };
-    (Ctr, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Ctr, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Ctr, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Ctr, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-
-    (Ofb, Aes, 128) => {
-        aes::Aes128Enc
-    };
-    (Ofb, Aes, 192) => {
-        aes::Aes192Enc
-    };
-    (Ofb, Aes, 256) => {
-        aes::Aes256Enc
-    };
-    (Ofb, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Ofb, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Ofb, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Ofb, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-
-    (Cbc, Aes, 128) => {
-        aes::Aes128Enc
-    };
-    (Cbc, Aes, 192) => {
-        aes::Aes192Enc
-    };
-    (Cbc, Aes, 256) => {
-        aes::Aes256Enc
-    };
-    (Cbc, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Cbc, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Cbc, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Cbc, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-
-    (Cfb, Aes, 128) => {
-        // cfb_mode needs a Decryptor to impl IvState.
-        aes::Aes128
-    };
-    (Cfb, Aes, 192) => {
-        // cfb_mode needs a Decryptor to impl IvState.
-        aes::Aes192
-    };
-    (Cfb, Aes, 256) => {
-        // cfb_mode needs a Decryptor to impl IvState.
-        aes::Aes256
-    };
-    (Cfb, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Cfb, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Cfb, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Cfb, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-
-    (Ecb, Aes, 128) => {
-        aes::Aes128Enc
-    };
-    (Ecb, Aes, 192) => {
-        aes::Aes192Enc
-    };
-    (Ecb, Aes, 256) => {
-        aes::Aes256Enc
-    };
-    (Ecb, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Ecb, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Ecb, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Ecb, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-}
-
-/// Map a triplet of (symbolic mode, symbolic block cipher, key length) to a
-/// block cipher implementation suitable for decryption with that mode.
-macro_rules! dec_mode_and_block_cipher_to_block_cipher_impl {
-    (Ctr, Aes, 128) => {
-        aes::Aes128Enc
-    };
-    (Ctr, Aes, 192) => {
-        aes::Aes192Enc
-    };
-    (Ctr, Aes, 256) => {
-        aes::Aes256Enc
-    };
-    (Ctr, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Ctr, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Ctr, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Ctr, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-
-    (Ofb, Aes, 128) => {
-        aes::Aes128Enc
-    };
-    (Ofb, Aes, 192) => {
-        aes::Aes192Enc
-    };
-    (Ofb, Aes, 256) => {
-        aes::Aes256Enc
-    };
-    (Ofb, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Ofb, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Ofb, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Ofb, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-
-    (Cbc, Aes, 128) => {
-        aes::Aes128Dec
-    };
-    (Cbc, Aes, 192) => {
-        aes::Aes192Dec
-    };
-    (Cbc, Aes, 256) => {
-        aes::Aes256Dec
-    };
-    (Cbc, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Cbc, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Cbc, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Cbc, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-
-    (Cfb, Aes, 128) => {
-        // cfb_mode needs a Decryptor to impl IvState.
-        aes::Aes128
-    };
-    (Cfb, Aes, 192) => {
-        // cfb_mode needs a Decryptor to impl IvState.
-        aes::Aes192
-    };
-    (Cfb, Aes, 256) => {
-        // cfb_mode needs a Decryptor to impl IvState.
-        aes::Aes256
-    };
-    (Cfb, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Cfb, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Cfb, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Cfb, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-
-    (Ecb, Aes, 128) => {
-        aes::Aes128Dec
-    };
-    (Ecb, Aes, 192) => {
-        aes::Aes192Dec
-    };
-    (Ecb, Aes, 256) => {
-        aes::Aes256Dec
-    };
-    (Ecb, Camellia, 128) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia128
-    };
-    (Ecb, Camellia, 192) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia192
-    };
-    (Ecb, Camellia, 256) => {
-        // No differentiation between encryptor/decryptor made in camellia crate.
-        camellia::Camellia256
-    };
-    (Ecb, Sm4, 128) => {
-        // No differentiation between encryptor/decryptor made in sm4 crate.
-        sm4::Sm4
-    };
-}
-
-macro_rules! mode_to_enc_impl {
-    (Ctr, $block_cipher_impl:ty) => {
-        ctr_impl::Encryptor::<&$block_cipher_impl>
-    };
-    (Ofb, $block_cipher_impl:ty) => {
-        ofb::OfbCore::<&$block_cipher_impl>
-    };
-    (Cbc, $block_cipher_impl:ty) => {
-        cbc::Encryptor::<&$block_cipher_impl>
-    };
-    (Cfb, $block_cipher_impl:ty) => {
-        cfb_mode::Encryptor::<&$block_cipher_impl>
-    };
-    (Ecb, $block_cipher_impl:ty) => {
-        ecb::Encryptor::<&$block_cipher_impl>
-    };
-}
-
-macro_rules! mode_to_dec_impl {
-    (Ctr, $block_cipher_impl:ty) => {
-        ctr_impl::Decryptor::<&$block_cipher_impl>
-    };
-    (Ofb, $block_cipher_impl:ty) => {
-        ofb::OfbCore::<&$block_cipher_impl>
-    };
-    (Cbc, $block_cipher_impl:ty) => {
-        cbc::Decryptor::<&$block_cipher_impl>
-    };
-    (Cfb, $block_cipher_impl:ty) => {
-        cfb_mode::Decryptor::<&$block_cipher_impl>
-    };
-    (Ecb, $block_cipher_impl:ty) => {
-        ecb::Decryptor::<&$block_cipher_impl>
-    };
-}
-
+/// Map a triplet of (symbolic mode, symbolic block cipher, key size) to the IV
+/// length.
 macro_rules! mode_and_block_cipher_to_iv_len {
-    (Ecb, $_block_alg_id:ident, $_key_size:tt) => {
-        0 as usize
+    (Ctr, $block_alg_id:ident, $key_size:tt) => {
+        block_cipher_to_block_len!($block_alg_id, $key_size)
     };
-    ($mode_id:ident, $block_alg_id:ident, $key_size:tt) => {
-        // The IV length should not be different between encryption and decryption
-        // implementations. Use the one from the encryption implementation.
-        <mode_to_enc_impl!(
-            $mode_id,
-            enc_mode_and_block_cipher_to_block_cipher_impl!($mode_id, $block_alg_id, $key_size)
-        )>::iv_size()
+    (Ofb, $block_alg_id:ident, $key_size:tt) => {
+        block_cipher_to_block_len!($block_alg_id, $key_size)
+    };
+    (Cbc, $block_alg_id:ident, $key_size:tt) => {
+        block_cipher_to_block_len!($block_alg_id, $key_size)
+    };
+    (Cfb, $block_alg_id:ident, $key_size:tt) => {
+        block_cipher_to_block_len!($block_alg_id, $key_size)
+    };
+    (Ecb, $_block_alg_id:ident, $_key_size:tt) => {
+        0
     };
 }
 
@@ -599,15 +319,11 @@ impl SymBlockCipherAlg {
     /// Determine the key length associated with the symmetric block cipher
     /// algorithm.
     pub fn key_len(&self) -> usize {
-        // The key length should not be different between encryption and decryption
-        // implementations. Use the one from the encryption implementation.
         macro_rules! gen_block_cipher_key_len {
             ($block_alg_id:ident,
-             $key_size:tt) => {{
-                let key_len = <block_cipher_to_query_impl!($block_alg_id, $key_size)>::key_size();
-                debug_assert_eq!(8 * key_len, $key_size);
-                key_len
-            }};
+             $key_size:tt) => {
+                block_cipher_to_key_len!($block_alg_id, $key_size)
+            };
         }
         gen_match_on_block_cipher_alg!(self, gen_block_cipher_key_len)
     }
@@ -615,12 +331,10 @@ impl SymBlockCipherAlg {
     /// Determine the block length associated with the symmetric block cipher
     /// algorithm.
     pub fn block_len(&self) -> usize {
-        // The block length should not be different between encryption and decryption
-        // implementations. Use the one from the encryption implementation.
         macro_rules! gen_block_cipher_block_len {
             ($block_alg_id:ident,
              $key_size:tt) => {
-                <block_cipher_to_query_impl!($block_alg_id, $key_size)>::block_size()
+                block_cipher_to_block_len!($block_alg_id, $key_size)
             };
         }
         gen_match_on_block_cipher_alg!(self, gen_block_cipher_block_len)
@@ -831,11 +545,7 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform {
      $iv:ident, $iv_out_opt:ident,
      $mode_id:ident, $block_alg_id:ident, $key_size:tt, $block_cipher_instance:ident) => {{
         const MODE_SUPPORTS_PARTIAL_LAST_BLOCK: bool = mode_supports_partial_last_block!($mode_id);
-
-        // The block length should not be different between encryption and decryption
-        // implementations. Use the one from the encryption implementation.
-        let block_len =
-            <enc_mode_and_block_cipher_to_block_cipher_impl!($mode_id, $block_alg_id, $key_size)>::block_size();
+        let block_len = block_cipher_to_block_len!($block_alg_id, $key_size);
         let dst_len = $dst_io_slices.total_len()?;
         if dst_len % block_len != 0 {
             if !MODE_SUPPORTS_PARTIAL_LAST_BLOCK {
@@ -985,11 +695,7 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform_in_place {
      $iv:ident, $iv_out_opt:ident,
      $mode_id:ident, $block_alg_id:ident, $key_size:tt, $block_cipher_instance:ident) => {{
         const MODE_SUPPORTS_PARTIAL_LAST_BLOCK: bool = mode_supports_partial_last_block!($mode_id);
-
-        // The block length should not be different between encryption and decryption
-        // implementations. Use the one from the encryption implementation.
-        let block_len =
-            <enc_mode_and_block_cipher_to_block_cipher_impl!($mode_id, $block_alg_id, $key_size)>::block_size();
+        let block_len = block_cipher_to_block_len!($block_alg_id, $key_size);
         let dst_len = $dst_io_slices.total_len()?;
         if dst_len % block_len != 0 {
             if !MODE_SUPPORTS_PARTIAL_LAST_BLOCK {
@@ -1243,6 +949,143 @@ impl SymBlockCipherModeEncryptionInstance {
 // ZeroizeOnDrop.
 #[cfg(feature = "zeroize")]
 impl zeroize::ZeroizeOnDrop for SymBlockCipherModeEncryptionInstance {}
+
+/// Map a triplet of (mode, block cipher, key length) to a block cipher
+/// implementation suitable for encryption with that mode.
+macro_rules! enc_mode_and_block_cipher_to_block_cipher_impl {
+    (Ctr, Aes, 128) => {
+        aes::Aes128Enc
+    };
+    (Ctr, Aes, 192) => {
+        aes::Aes192Enc
+    };
+    (Ctr, Aes, 256) => {
+        aes::Aes256Enc
+    };
+    (Ctr, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Ctr, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Ctr, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Ctr, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+
+    (Ofb, Aes, 128) => {
+        aes::Aes128Enc
+    };
+    (Ofb, Aes, 192) => {
+        aes::Aes192Enc
+    };
+    (Ofb, Aes, 256) => {
+        aes::Aes256Enc
+    };
+    (Ofb, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Ofb, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Ofb, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Ofb, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+
+    (Cbc, Aes, 128) => {
+        aes::Aes128Enc
+    };
+    (Cbc, Aes, 192) => {
+        aes::Aes192Enc
+    };
+    (Cbc, Aes, 256) => {
+        aes::Aes256Enc
+    };
+    (Cbc, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Cbc, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Cbc, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Cbc, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+
+    (Cfb, Aes, 128) => {
+        // cfb_mode needs a Decryptor to impl IvState.
+        aes::Aes128
+    };
+    (Cfb, Aes, 192) => {
+        // cfb_mode needs a Decryptor to impl IvState.
+        aes::Aes192
+    };
+    (Cfb, Aes, 256) => {
+        // cfb_mode needs a Decryptor to impl IvState.
+        aes::Aes256
+    };
+    (Cfb, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Cfb, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Cfb, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Cfb, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+
+    (Ecb, Aes, 128) => {
+        aes::Aes128Enc
+    };
+    (Ecb, Aes, 192) => {
+        aes::Aes192Enc
+    };
+    (Ecb, Aes, 256) => {
+        aes::Aes256Enc
+    };
+    (Ecb, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Ecb, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Ecb, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Ecb, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+}
 
 #[derive(Clone)]
 enum SymBlockCipherModeEncryptionInstanceState {
@@ -1594,6 +1437,24 @@ macro_rules! mode_and_block_cipher_to_block_cipher_mode_encryption_instance_vari
     };
 }
 
+macro_rules! mode_to_enc_impl {
+    (Ctr, $block_cipher_impl:ty) => {
+        ctr_impl::Encryptor::<&$block_cipher_impl>
+    };
+    (Ofb, $block_cipher_impl:ty) => {
+        ofb::OfbCore::<&$block_cipher_impl>
+    };
+    (Cbc, $block_cipher_impl:ty) => {
+        cbc::Encryptor::<&$block_cipher_impl>
+    };
+    (Cfb, $block_cipher_impl:ty) => {
+        cfb_mode::Encryptor::<&$block_cipher_impl>
+    };
+    (Ecb, $block_cipher_impl:ty) => {
+        ecb::Encryptor::<&$block_cipher_impl>
+    };
+}
+
 // Instantiate a block cipher mode implementation wrapping a block cipher
 // instance. Used from SymBlockCipherModeEncryptionInstanceState::encrypt() and
 // SymBlockCipherModeEncryptionInstanceState::encrypt_in_place().
@@ -1722,8 +1583,8 @@ impl SymBlockCipherModeEncryptionInstanceState {
 
     fn block_cipher_block_len(&self) -> usize {
         macro_rules! gen_block_cipher_block_len {
-            ($mode_id:ident, $block_alg_id:ident, $key_size:tt, $_block_cipher_instance:ident) => {
-                <enc_mode_and_block_cipher_to_block_cipher_impl!($mode_id, $block_alg_id, $key_size)>::block_size()
+            ($_mode_id:ident, $block_cipher_alg_id:ident, $key_size:tt, $_block_cipher_instance:ident) => {
+                block_cipher_to_block_len!($block_cipher_alg_id, $key_size)
             };
         }
         gen_match_on_block_cipher_mode_encryption_instance!(self, gen_block_cipher_block_len, _block_cipher_instance)
@@ -1974,6 +1835,143 @@ impl SymBlockCipherModeDecryptionInstance {
 #[cfg(feature = "zeroize")]
 impl zeroize::ZeroizeOnDrop for SymBlockCipherModeDecryptionInstance {}
 
+/// Map a triplet of (symbolic mode, symbolic block cipher, key length) to a
+/// block cipher implementation suitable for decryption with that mode.
+macro_rules! dec_mode_and_block_cipher_to_block_cipher_impl {
+    (Ctr, Aes, 128) => {
+        aes::Aes128Enc
+    };
+    (Ctr, Aes, 192) => {
+        aes::Aes192Enc
+    };
+    (Ctr, Aes, 256) => {
+        aes::Aes256Enc
+    };
+    (Ctr, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Ctr, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Ctr, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Ctr, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+
+    (Ofb, Aes, 128) => {
+        aes::Aes128Enc
+    };
+    (Ofb, Aes, 192) => {
+        aes::Aes192Enc
+    };
+    (Ofb, Aes, 256) => {
+        aes::Aes256Enc
+    };
+    (Ofb, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Ofb, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Ofb, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Ofb, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+
+    (Cbc, Aes, 128) => {
+        aes::Aes128Dec
+    };
+    (Cbc, Aes, 192) => {
+        aes::Aes192Dec
+    };
+    (Cbc, Aes, 256) => {
+        aes::Aes256Dec
+    };
+    (Cbc, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Cbc, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Cbc, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Cbc, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+
+    (Cfb, Aes, 128) => {
+        // cfb_mode needs a Decryptor to impl IvState.
+        aes::Aes128
+    };
+    (Cfb, Aes, 192) => {
+        // cfb_mode needs a Decryptor to impl IvState.
+        aes::Aes192
+    };
+    (Cfb, Aes, 256) => {
+        // cfb_mode needs a Decryptor to impl IvState.
+        aes::Aes256
+    };
+    (Cfb, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Cfb, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Cfb, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Cfb, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+
+    (Ecb, Aes, 128) => {
+        aes::Aes128Dec
+    };
+    (Ecb, Aes, 192) => {
+        aes::Aes192Dec
+    };
+    (Ecb, Aes, 256) => {
+        aes::Aes256Dec
+    };
+    (Ecb, Camellia, 128) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia128
+    };
+    (Ecb, Camellia, 192) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia192
+    };
+    (Ecb, Camellia, 256) => {
+        // No differentiation between encryptor/decryptor made in camellia crate.
+        camellia::Camellia256
+    };
+    (Ecb, Sm4, 128) => {
+        // No differentiation between encryptor/decryptor made in sm4 crate.
+        sm4::Sm4
+    };
+}
+
 #[derive(Clone)]
 enum SymBlockCipherModeDecryptionInstanceState {
     #[cfg(all(feature = "ctr", feature = "aes"))]
@@ -2210,8 +2208,8 @@ macro_rules! gen_match_on_block_cipher_mode_decryption_instance {
     };
 }
 
-/// Map a triplet of (symbolic mode, symbolic block cipher, key size) to a variant of
-/// SymBlockCipherModeDecryptionInstanceState.
+/// Map a triplet of (symbolic mode, symbolic block cipher, key size) to a
+/// variant of SymBlockCipherModeDecryptionInstanceState.
 macro_rules! mode_and_block_cipher_to_block_cipher_mode_decryption_instance_variant {
     (Ctr, Aes, 128) => {
         SymBlockCipherModeDecryptionInstanceState::CtrAes128
@@ -2321,6 +2319,24 @@ macro_rules! mode_and_block_cipher_to_block_cipher_mode_decryption_instance_vari
     };
     (Ecb, Sm4, 128) => {
         SymBlockCipherModeDecryptionInstanceState::EcbSm4_128
+    };
+}
+
+macro_rules! mode_to_dec_impl {
+    (Ctr, $block_cipher_impl:ty) => {
+        ctr_impl::Decryptor::<&$block_cipher_impl>
+    };
+    (Ofb, $block_cipher_impl:ty) => {
+        ofb::OfbCore::<&$block_cipher_impl>
+    };
+    (Cbc, $block_cipher_impl:ty) => {
+        cbc::Decryptor::<&$block_cipher_impl>
+    };
+    (Cfb, $block_cipher_impl:ty) => {
+        cfb_mode::Decryptor::<&$block_cipher_impl>
+    };
+    (Ecb, $block_cipher_impl:ty) => {
+        ecb::Decryptor::<&$block_cipher_impl>
     };
 }
 
@@ -2435,8 +2451,8 @@ impl SymBlockCipherModeDecryptionInstanceState {
 
     fn block_cipher_block_len(&self) -> usize {
         macro_rules! gen_block_cipher_block_len {
-            ($mode_id:ident, $block_alg_id:ident, $key_size:tt, $_block_cipher_instance:ident) => {
-                <dec_mode_and_block_cipher_to_block_cipher_impl!($mode_id, $block_alg_id, $key_size)>::block_size()
+            ($_mode_id:ident, $block_cipher_alg_id:ident, $key_size:tt, $_block_cipher_instance:ident) => {
+                block_cipher_to_block_len!($block_cipher_alg_id, $key_size)
             };
         }
         gen_match_on_block_cipher_mode_decryption_instance!(self, gen_block_cipher_block_len, _block_cipher_instance)
