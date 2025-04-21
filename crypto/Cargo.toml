@@ -27,7 +27,11 @@ enable_arch_math_asm = ["cmpa/enable_arch_math_asm"]
 # Brings unsafe{} blocks.
 enable_x86_64_rdseed = []
 
-zeroize = ["dep:zeroize", "cocoon-tpm-utils-common/zeroize", "cmpa/zeroize"]
+zeroize = [
+    "dep:zeroize", "cocoon-tpm-utils-common/zeroize", "cmpa/zeroize",
+    "aes?/zeroize", "camellia?/zeroize", "sm4?/zeroize",
+    "cfb-mode?/zeroize", "cbc?/zeroize", "ofb?/zeroize"
+]
 
 # Replace crypto implementations written in pure Rust with
 # boringssl FFI invocations.

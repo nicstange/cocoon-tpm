@@ -1473,8 +1473,9 @@ macro_rules! gen_mode_encryptor_impl_new_instance_snippet {
         }
 
         // Note that the block cipher instance is a reference, which implements
-        // crypto_common's BlockEncrypt, hence BlockEncryptMut. This reduces the mode
-        // instance's size on the stack significantly.
+        // crypto_common's BlockEncrypt, hence BlockEncryptMut. This reduces the
+        // mode instance's size on the stack significantly. Also, all (possibly
+        // external) block cipher mode implementations impl ZeroizeOnDrop.
         <mode_to_enc_impl!(
             Ecb,
             enc_mode_and_block_cipher_to_block_cipher_impl!(Ecb, $block_alg_id, $key_size)
@@ -1507,7 +1508,8 @@ macro_rules! gen_mode_encryptor_impl_new_instance_snippet {
 
         // Note that the block cipher instance is a reference, which implements
         // crypto_common's BlockEncrypt, hence BlockEncryptMut. This reduces the
-        // mode instance's size on the stack significantly.
+        // mode instance's size on the stack significantly. Also, all (possibly
+        // external) block cipher mode implementations impl ZeroizeOnDrop.
         <mode_to_enc_impl!(
             $mode_id,
             enc_mode_and_block_cipher_to_block_cipher_impl!($mode_id, $block_alg_id, $key_size)
@@ -2359,7 +2361,8 @@ macro_rules! gen_mode_decryptor_impl_new_instance_snippet {
 
         // Note that the block cipher instance is a reference, which implements
         // crypto_common's BlockDecrypt, hence BlockDecryptMut. This reduces the
-        // mode instance's size on the stack significantly.
+        // mode instance's size on the stack significantly. Also, all (possibly
+        // external) block cipher mode implementations impl ZeroizeOnDrop.
         <mode_to_dec_impl!(
             Ecb,
             dec_mode_and_block_cipher_to_block_cipher_impl!(Ecb, $block_alg_id, $key_size)
@@ -2392,7 +2395,8 @@ macro_rules! gen_mode_decryptor_impl_new_instance_snippet {
 
         // Note that the block cipher instance is a reference, which implements
         // crypto_common's BlockDecrypt, hence BlockDecryptMut. This reduces the
-        // mode instance's size on the stack significantly.
+        // mode instance's size on the stack significantly. Also, all (possibly
+        // external) block cipher mode implementations impl ZeroizeOnDrop.
         <mode_to_dec_impl!(
             $mode_id,
             dec_mode_and_block_cipher_to_block_cipher_impl!($mode_id, $block_alg_id, $key_size)
