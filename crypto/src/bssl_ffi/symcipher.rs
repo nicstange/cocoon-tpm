@@ -12,7 +12,7 @@
 //!   library.
 
 extern crate alloc;
-use alloc::{boxed::Box, vec::Vec};
+use alloc::boxed::Box;
 
 use super::error::bssl_get_error;
 use crate::symcipher::{self, transform_next_blocks, transform_next_blocks_in_place, SymBlockCipherAlg};
@@ -22,10 +22,7 @@ use crate::{
 };
 use crate::{
     tpm2_interface,
-    utils_common::{
-        alloc::{box_try_new_with, try_alloc_zeroizing_vec},
-        zeroize,
-    },
+    utils_common::{alloc::box_try_new_with, zeroize},
 };
 use core::{convert, ffi};
 
@@ -522,9 +519,9 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform {
      $iv:ident, $iv_out_opt:ident,
      $mode_id:ident, $block_alg_id:ident, $block_cipher_key_instance:ident) => {{
         const MODE_SUPPORTS_PARTIAL_LAST_BLOCK: bool = mode_supports_partial_last_block!($mode_id);
-        let block_len = block_cipher_to_block_len!($block_alg_id);
+        const BLOCK_LEN: usize = block_cipher_to_block_len!($block_alg_id);
         let dst_len = $dst_io_slices.total_len()?;
-        if dst_len % block_len != 0 {
+        if dst_len % BLOCK_LEN != 0 {
             if !MODE_SUPPORTS_PARTIAL_LAST_BLOCK {
                 return Err(CryptoError::InvalidMessageLength);
             } else if $iv_out_opt.is_some() {
@@ -536,11 +533,6 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform {
             return Err(CryptoError::Internal);
         }
 
-        let mut scratch_block_buf = zeroize::Zeroizing::from(Vec::new());
-        if !$dst_io_slices.all_aligned_to(block_len)? || !$src_io_slices.all_aligned_to(block_len)? {
-            scratch_block_buf = try_alloc_zeroizing_vec(block_len)?;
-        }
-
         let mut mode_transform_impl_instance = $gen_mode_transform_new_impl_instance_snippet!(
             $mode_id,
             $block_alg_id,
@@ -549,6 +541,8 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform {
             $iv_out_opt,
         )?;
 
+        let mut scratch_block_buf = zeroize::Zeroizing::from([0u8; BLOCK_LEN]);
+
         loop {
             if !transform_next_blocks::<MODE_SUPPORTS_PARTIAL_LAST_BLOCK, _>(
                 $dst_io_slices,
@@ -556,8 +550,8 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform {
                 |dst_blocks: &mut [u8], src_blocks: Option<&[u8]>| {
                     mode_transform_impl_instance.transform(dst_blocks, src_blocks);
                 },
-                block_len,
-                &mut scratch_block_buf,
+                BLOCK_LEN,
+                scratch_block_buf.as_mut_slice(),
             )? {
                 break;
             }
@@ -577,19 +571,15 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform_in_place {
      $iv:ident, $iv_out_opt:ident,
      $mode_id:ident, $block_alg_id:ident, $block_cipher_key_instance:ident) => {{
         const MODE_SUPPORTS_PARTIAL_LAST_BLOCK: bool = mode_supports_partial_last_block!($mode_id);
-        let block_len = block_cipher_to_block_len!($block_alg_id);
+        const BLOCK_LEN: usize = block_cipher_to_block_len!($block_alg_id);
         let dst_len = $dst_io_slices.total_len()?;
-        if dst_len % block_len != 0 {
+        if dst_len % BLOCK_LEN != 0 {
             if !MODE_SUPPORTS_PARTIAL_LAST_BLOCK {
                 return Err(CryptoError::InvalidMessageLength);
             } else if $iv_out_opt.is_some() {
                 // Don't allow iv_out retrieval for partial last blocks.
                 return Err(CryptoError::Internal);
             }
-        }
-        let mut scratch_block_buf = zeroize::Zeroizing::from(Vec::new());
-        if !$dst_io_slices.all_aligned_to(block_len)? {
-            scratch_block_buf = try_alloc_zeroizing_vec(block_len)?;
         }
 
         let mut mode_transform_impl_instance = $gen_mode_transform_new_impl_instance_snippet!(
@@ -600,12 +590,14 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform_in_place {
             $iv_out_opt,
         )?;
 
+        let mut scratch_block_buf = zeroize::Zeroizing::from([0u8; BLOCK_LEN]);
+
         loop {
             if !transform_next_blocks_in_place::<MODE_SUPPORTS_PARTIAL_LAST_BLOCK, _, _>(
                 &mut $dst_io_slices,
                 |dst_blocks: &mut [u8]| mode_transform_impl_instance.transform(dst_blocks, None),
-                block_len,
-                &mut scratch_block_buf,
+                BLOCK_LEN,
+                scratch_block_buf.as_mut_slice(),
             )? {
                 break;
             }
