@@ -10,7 +10,6 @@ use cipher::{
     Block, BlockBackend, BlockCipher, BlockClosure, BlockDecryptMut, BlockEncryptMut, BlockSizeUser, InnerIvInit, Iv,
     IvState, ParBlocksSizeUser,
 };
-use cmpa;
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize as _;
 

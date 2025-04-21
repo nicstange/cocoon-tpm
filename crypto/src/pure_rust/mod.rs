@@ -3,3 +3,4 @@
 // Author: Nicolai Stange <nstange@suse.de>
 
 pub(super) mod hash;
+pub(super) mod symcipher;
