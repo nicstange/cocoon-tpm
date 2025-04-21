@@ -595,7 +595,12 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform {
     }};
 }
 
-fn transform_next_blocks<'a, 'b, const ENABLE_PARTIAL_LAST_BLOCK: bool, BT: FnMut(&mut [u8], Option<&[u8]>)>(
+pub(crate) fn transform_next_blocks<
+    'a,
+    'b,
+    const ENABLE_PARTIAL_LAST_BLOCK: bool,
+    BT: FnMut(&mut [u8], Option<&[u8]>),
+>(
     dst: &mut dyn CryptoWalkableIoSlicesMutIter<'a>,
     src: &mut dyn CryptoWalkableIoSlicesIter<'b>,
     mut block_transform: BT,
@@ -740,7 +745,7 @@ macro_rules! sym_block_cipher_mode_instance_gen_transform_in_place {
     }};
 }
 
-fn transform_next_blocks_in_place<
+pub(crate) fn transform_next_blocks_in_place<
     'a,
     'b,
     const ENABLE_PARTIAL_LAST_BLOCK: bool,

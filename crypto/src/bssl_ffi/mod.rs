@@ -4,3 +4,4 @@
 
 mod error;
 pub(super) mod hash;
+pub(super) mod symcipher;
