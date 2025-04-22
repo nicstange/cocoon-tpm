@@ -19,7 +19,7 @@ use core::{convert, mem};
 /// Usually not instantiated directly, but obtained through `EccKey`.
 pub struct EccPublicKey {
     curve_id: tpm2_interface::TpmEccCurve,
-    point: curve::AffinePointMontgomeryForm,
+    point: curve::AffinePoint,
 }
 
 impl EccPublicKey {
@@ -28,7 +28,7 @@ impl EccPublicKey {
         self.curve_id
     }
 
-    pub fn get_point(&self) -> &curve::AffinePointMontgomeryForm {
+    pub fn get_point(&self) -> &curve::AffinePoint {
         &self.point
     }
 
@@ -101,7 +101,7 @@ impl<'a, 'b> convert::TryFrom<(&curve::CurveOps<'a>, &tpm2_interface::TpmsEccPoi
         let (curve_ops, src_point) = value;
         let curve_id = curve_ops.get_curve().get_curve_id();
         let tpm2_interface::TpmsEccPoint { x: src_x, y: src_y } = &src_point;
-        let point = curve::AffinePointMontgomeryForm::try_from_plain_coordinates(
+        let point = curve::AffinePoint::try_from_plain_coordinates(
             &cmpa::MpBigEndianUIntByteSlice::from_bytes(&src_x.buffer),
             &cmpa::MpBigEndianUIntByteSlice::from_bytes(&src_y.buffer),
             curve_ops,

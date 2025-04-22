@@ -128,13 +128,40 @@ impl CurveFieldOps {
     }
 }
 
-/// Affine ECC point with coordinates in Montgomery form.
-pub struct AffinePointMontgomeryForm {
+/// ECC point in a representation with efficient storage characteristics.
+///
+/// Even though the name suggests the point representation is in affine
+/// coordinates, it is completely internal to the backend implementation and
+/// opaque to the user.
+///
+/// An `AffinePoint` may be converted to and from an external representation in
+/// big-endian format by
+/// means of [`try_from_plain_coordinates()`](Self::try_from_plain_coordinates)
+/// and [`into_plain_coordinates()`](Self::into_plain_coordinates) or
+/// [`to_plain_coordinates()`](Self::to_plain_coordinates) respectively.
+///
+/// In general, it is expected that if a backend uses different representations
+/// for `AffinePoint` and [`ProjectivePoint`], then an `AffinePoint` has better
+/// storage characteristics while a [`ProjectivePoint`] has some computational
+/// advantages, especially when chaining multiple arithmetic operations.
+///
+/// Certain [`operations on points`](CurveOps) expect a [`ProjectivePoint`] for
+/// their input accordingly. Conversion of an [`AffinePoint`] to and from the
+/// [`ProjectivePoint`] representation is possible via
+/// [`AffinePoint::into_projective()`](AffinePoint::into_projective) and
+/// [ProjectivePoint::into_affine()](ProjectivePoint::into_affine).
+///
+/// Users may assume that the conversion to a [`ProjectivePoint`] has negligible
+/// computational demands (it may require a memory allocation though), whereas
+/// the inverse direction *may* involve e.g. a modular inversion.
+pub struct AffinePoint {
+    /// x component in Montgomery form.
     mg_x: zeroize::Zeroizing<Vec<cmpa::LimbType>>,
+    /// y component in Montgomery form.
     mg_y: zeroize::Zeroizing<Vec<cmpa::LimbType>>,
 }
 
-impl AffinePointMontgomeryForm {
+impl AffinePoint {
     fn _try_from_plain_coordinates(
         x: &cmpa::MpBigEndianUIntByteSlice,
         y: &cmpa::MpBigEndianUIntByteSlice,
@@ -147,7 +174,7 @@ impl AffinePointMontgomeryForm {
         Ok(Self { mg_x, mg_y })
     }
 
-    /// Create a `AffinePointMontgomeryForm` from "plain" affine coordinates.
+    /// Create a `AffinePoint` from "plain" affine coordinates.
     pub fn try_from_plain_coordinates(
         x: &cmpa::MpBigEndianUIntByteSlice,
         y: &cmpa::MpBigEndianUIntByteSlice,
@@ -164,7 +191,7 @@ impl AffinePointMontgomeryForm {
         Self::_try_from_plain_coordinates(x, y, field_ops)
     }
 
-    /// Convert an `AffinePointMontgomeryForm` into "plain" affine coordinates.
+    /// Convert an `AffinePoint` into "plain" affine coordinates.
     ///
     /// Saves a scratch buffer allocation as compared to
     /// [`to_plain_coordinates()`](Self::to_plain_coordinates).
@@ -187,7 +214,7 @@ impl AffinePointMontgomeryForm {
         }
     }
 
-    /// Convert an `AffinePointMontgomeryForm` to "plain" affine coordinates.
+    /// Convert an `AffinePoint` to "plain" affine coordinates.
     pub fn to_plain_coordinates(
         &self,
         result_x: &mut cmpa::MpMutBigEndianUIntByteSlice,
@@ -213,9 +240,10 @@ impl AffinePointMontgomeryForm {
         Ok(())
     }
 
-    /// Convert into projective coordinates.
+    /// Convert into [`ProjectivePoint`] representation.
     #[allow(unused)]
-    fn into_projective(self, field_ops: &CurveFieldOps) -> Result<ProjectivePoint, CryptoError> {
+    pub fn into_projective(self, curve_ops: &CurveOps) -> Result<ProjectivePoint, CryptoError> {
+        let field_ops = curve_ops.get_field_ops();
         let mg_z = zeroize::Zeroizing::from(field_ops.mg_identity()?);
         Ok(ProjectivePoint {
             mg_x: self.mg_x,
@@ -233,7 +261,7 @@ impl AffinePointMontgomeryForm {
     }
 }
 
-impl zeroize::ZeroizeOnDrop for AffinePointMontgomeryForm {}
+impl zeroize::ZeroizeOnDrop for AffinePoint {}
 
 /// Error type returned by conversion from projective to affine points.
 #[derive(Debug)]
@@ -242,12 +270,40 @@ pub enum ProjectivePointIntoAffineError {
     PointIsIdentity,
 }
 
-/// A projective ECC point.
+/// ECC point in a representation with efficient computational characteristics.
 ///
-/// All three coordinates are always in Montgomery form each.
+/// Even though the name suggests the point representation is in projective
+/// coordinates, it is completely internal to the backend implementation and
+/// opaque to the user.
+///
+/// A `ProjectivePoint` may be converted to an external representation with
+/// affine coordinates in big-endian format by
+/// means of [`into_affine_plain_coordinates()`](Self::into_affine_plain_coordinates).
+/// It is not possible to instantiate a `ProjectivePoint` directly from such
+/// though -- an [`AffinePoint`] would have to get
+/// [constructed](AffinePoint::try_from_plain_coordinates) first
+/// and then [converted](AffinePoint::into_projective) into the
+/// `ProjectivePoint` representation.
+///
+/// In general, it is expected that if a backend uses different representations
+/// for `ProjectivePoint` and [`AffinePoint`], then an `AffinePoint` has better
+/// storage characteristics while a [`ProjectivePoint`] has some computational
+/// advantages, especially when chaining multiple arithmetic operations.
+///
+/// Conversion of a `ProjectivePoint` to and from the [`ProjectivePoint`]
+/// representation is possible
+/// via [ProjectivePoint::into_affine()](ProjectivePoint::into_affine) and
+/// [`AffinePoint::into_projective()`](AffinePoint::into_projective).
+///
+/// Users may assume that the conversion from an [`AffinePoint`] has negligible
+/// computational demands (it may require a memory allocation though), whereas
+/// the inverse direction *may* involve e.g. a modular inversion.
 pub struct ProjectivePoint {
+    /// x component in Montgomery form.
     mg_x: zeroize::Zeroizing<Vec<cmpa::LimbType>>,
+    /// y component in Montgomery form.
     mg_y: zeroize::Zeroizing<Vec<cmpa::LimbType>>,
+    /// z component in Montgomery form.
     mg_z: zeroize::Zeroizing<Vec<cmpa::LimbType>>,
 }
 
@@ -327,13 +383,12 @@ impl ProjectivePoint {
         mg_z.copy_from_cond(&src_mg_z, cond);
     }
 
-    /// Convert into an affine point in Montogmery form, i.e. into an
-    /// [`AffinePointMontgomeryForm`].
+    /// Convert into an [`AffinePoint`].
     pub fn into_affine(
         mut self,
         curve_ops: &CurveOps,
         scratch: Option<&mut CurveOpsScratch>,
-    ) -> Result<Result<AffinePointMontgomeryForm, ProjectivePointIntoAffineError>, CryptoError> {
+    ) -> Result<Result<AffinePoint, ProjectivePointIntoAffineError>, CryptoError> {
         let field_ops = curve_ops.get_field_ops();
         let mut scratch0: zeroize::Zeroizing<Vec<cmpa::LimbType>> = zeroize::Zeroizing::from(Vec::new());
         let mut scratch1: zeroize::Zeroizing<Vec<cmpa::LimbType>> = zeroize::Zeroizing::from(Vec::new());
@@ -388,7 +443,7 @@ impl ProjectivePoint {
         let mut affine_mg_y = cmpa::MpMutNativeEndianUIntLimbsSlice::from_limbs(&mut affine_mg_y_buf);
         field_ops.mul(&mut affine_mg_y, &mg_y, &mg_z_inv);
 
-        Ok(Ok(AffinePointMontgomeryForm {
+        Ok(Ok(AffinePoint {
             mg_x: affine_mg_x_buf,
             mg_y: affine_mg_y_buf,
         }))
@@ -988,11 +1043,11 @@ impl<'a> CurveOps<'a> {
         CurveOpsScratch::try_new(self.curve.get_p_len())
     }
 
-    /// Get the curve's (subgroup) generator point in affine Montgomery form
-    /// coordinates.
-    pub fn generator(&self) -> Result<AffinePointMontgomeryForm, CryptoError> {
+    /// Get the curve's (subgroup) generator point in [`AffinePoint`]
+    /// representation.
+    pub fn generator(&self) -> Result<AffinePoint, CryptoError> {
         let (g_x, g_y) = self.curve.get_generator_coordinates();
-        AffinePointMontgomeryForm::_try_from_plain_coordinates(&g_x, &g_y, &self.field_ops)
+        AffinePoint::_try_from_plain_coordinates(&g_x, &g_y, &self.field_ops)
     }
 
     /// Get the associated curve.
@@ -1008,7 +1063,7 @@ impl<'a> CurveOps<'a> {
     fn _point_scalar_mul<ST: cmpa::MpUIntCommon>(
         &self,
         scalar: &ST,
-        point: &AffinePointMontgomeryForm,
+        point: &AffinePoint,
         scratch: &mut CurveOpsScratch,
     ) -> Result<ProjectivePoint, CryptoError> {
         // The scalar is always strictly less than the order, except for the
@@ -1028,7 +1083,7 @@ impl<'a> CurveOps<'a> {
     pub fn point_scalar_mul<ST: cmpa::MpUIntCommon>(
         &self,
         scalar: &ST,
-        point: &AffinePointMontgomeryForm,
+        point: &AffinePoint,
         scratch: &mut CurveOpsScratch,
     ) -> Result<ProjectivePoint, CryptoError> {
         self.curve.validate_scalar(scalar)?;
@@ -1059,7 +1114,7 @@ impl<'a> CurveOps<'a> {
     /// Test whether a point is on the curve.
     pub fn point_is_on_curve(
         &self,
-        point: &AffinePointMontgomeryForm,
+        point: &AffinePoint,
         scratch: Option<&mut CurveOpsScratch>,
     ) -> Result<bool, CryptoError> {
         self.ops
@@ -1070,7 +1125,7 @@ impl<'a> CurveOps<'a> {
     /// point](Self::generator).
     pub fn point_is_in_generator_subgroup(
         &self,
-        point: &AffinePointMontgomeryForm,
+        point: &AffinePoint,
         scratch: &mut CurveOpsScratch,
     ) -> Result<bool, CryptoError> {
         if !self.point_is_on_curve(point, Some(scratch))? {
@@ -1119,8 +1174,7 @@ fn test_point_scalar_mul_common(curve_id: tpm2_interface::TpmEccCurve) {
             &mut scratch,
         )
         .unwrap();
-    // Go the ProjectivePoint -> AffinePointMontgomeryForm -> plain coordinates
-    // route
+    // Go the ProjectivePoint -> AffinePoint -> plain coordinates route
     let result = result.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
     let mut result_x_buf = try_alloc_vec::<u8>(curve.get_p().len()).unwrap();
     let mut result_x = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut result_x_buf);
@@ -1247,7 +1301,7 @@ fn test_point_add_common(curve_id: tpm2_interface::TpmEccCurve) {
 
     // Now add it two times to itself.
     scalar.set_to_u8(1);
-    let g = g.into_projective(curve_ops.get_field_ops()).unwrap();
+    let g = g.into_projective(&curve_ops).unwrap();
     let two_g = curve_ops.point_add(&g, &g, &mut scratch).unwrap();
     let result = curve_ops.point_add(&two_g, &g, &mut scratch).unwrap();
     let result = result.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
@@ -1344,7 +1398,7 @@ fn test_point_double_repeated_common(curve_id: tpm2_interface::TpmEccCurve) {
     let expected = expected.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
 
     // Now double the generator twice.
-    let g = g.into_projective(curve_ops.get_field_ops()).unwrap();
+    let g = g.into_projective(&curve_ops).unwrap();
     let result = curve_ops.point_double_repeated(g, 2, &mut scratch).unwrap();
     let result = result.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
 

@@ -7,7 +7,7 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
-use super::{AffinePointMontgomeryForm, CurveFieldOps, ProjectivePoint};
+use super::{AffinePoint, CurveFieldOps, ProjectivePoint};
 
 use crate::utils_common::{
     alloc::{try_alloc_vec, try_alloc_zeroizing_vec},
@@ -228,7 +228,7 @@ impl WeierstrassCurveOps {
     fn _point_add_mixed(
         result: &mut ProjectivePoint,
         op0: &ProjectivePoint,
-        op1: &AffinePointMontgomeryForm,
+        op1: &AffinePoint,
         field_ops: &CurveFieldOps,
         mg_a: &cmpa::MpNativeEndianUIntLimbsSlice,
         mg_b3: &cmpa::MpNativeEndianUIntLimbsSlice,
@@ -532,7 +532,7 @@ impl WeierstrassCurveOps {
         &self,
         scalar: &ST,
         scalar_nbits: usize,
-        point: &AffinePointMontgomeryForm,
+        point: &AffinePoint,
         field_ops: &CurveFieldOps,
         scratch: &mut WeierstrassCurveOpsScratch,
     ) -> Result<ProjectivePoint, CryptoError> {
@@ -609,7 +609,7 @@ impl WeierstrassCurveOps {
     /// Test whether a given point is on the curve.
     pub fn point_is_on_curve(
         &self,
-        point: &AffinePointMontgomeryForm,
+        point: &AffinePoint,
         field_ops: &CurveFieldOps,
         scratch: Option<&mut WeierstrassCurveOpsScratch>,
     ) -> Result<bool, CryptoError> {
