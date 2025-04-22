@@ -47,7 +47,7 @@ fn _ecdh_c_1e_1s_cdh_compute_z(
     let mut z_buf = try_alloc_zeroizing_vec::<u8>(curve_ops.get_curve().get_p_len())?;
     let mut z = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut z_buf);
     h_d_q
-        .into_affine_plain_coordinates(&mut z, None, curve_ops.get_field_ops(), Some(&mut curve_ops_scratch))
+        .into_affine_plain_coordinates(&mut z, None, curve_ops, Some(&mut curve_ops_scratch))
         .map(|r| {
             r.map(|_| z_buf).map_err(|e| match e {
                 curve::ProjectivePointIntoAffineError::PointIsIdentity => _EcdhCdhError::PointIsIdentity,
@@ -149,7 +149,7 @@ pub fn ecdh_c_1e_1s_cdh_party_v_key_gen(
     key_v.pub_key().get_point().to_plain_coordinates(
         &mut cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut pub_key_v_x),
         None,
-        curve_ops.get_field_ops(),
+        &curve_ops,
     )?;
 
     _ecdh_c_1e_1s_cdh_derive_shared_secret(&z, kdf_hash_alg, kdf_label, pub_key_u_x, &pub_key_v_x)
@@ -209,13 +209,13 @@ pub fn ecdh_c_1e_1s_cdh_party_u_key_gen(
         break (key_u.take_public(), z);
     };
 
-    let pub_key_u_plain = pub_key_u.into_tpms_ecc_point(curve_ops.get_field_ops())?;
+    let pub_key_u_plain = pub_key_u.into_tpms_ecc_point(&curve_ops)?;
     let pub_key_u_x = &pub_key_u_plain.x.buffer;
     let mut pub_key_v_x = try_alloc_vec::<u8>(curve_ops.get_curve().get_p_len())?;
     pub_key_v.get_point().to_plain_coordinates(
         &mut cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut pub_key_v_x),
         None,
-        curve_ops.get_field_ops(),
+        &curve_ops,
     )?;
 
     Ok((

@@ -21,11 +21,9 @@ mod weierstrass_arithmetic;
 
 /// Operations on a curve's associated scalar prime field.
 ///
-/// Most notably conversion of scalars to and from Montgomery form.
-///
-/// Never instantiated directly, but usually obtained through
-/// [`Curve::field_ops()`](Curve::field_ops).
-pub struct CurveFieldOps {
+/// Most notably conversion of scalars to and from Montgomery form and
+/// arithmetic on such ones.
+struct CurveFieldOps {
     p: cmpa::MpBigEndianUIntByteSlice<'static>,
     mg_neg_p0_inv_mod_l: cmpa::LimbType,
     mg_radix2_mod_p: Vec<cmpa::LimbType>,
@@ -55,6 +53,7 @@ impl CurveFieldOps {
     }
 
     /// Get the scalar field's prime.
+    #[allow(unused)]
     pub fn get_p(&self) -> &cmpa::MpBigEndianUIntByteSlice {
         &self.p
     }
@@ -136,7 +135,7 @@ pub struct AffinePointMontgomeryForm {
 }
 
 impl AffinePointMontgomeryForm {
-    pub fn _try_from_plain_coordinates(
+    fn _try_from_plain_coordinates(
         x: &cmpa::MpBigEndianUIntByteSlice,
         y: &cmpa::MpBigEndianUIntByteSlice,
         field_ops: &CurveFieldOps,
@@ -152,8 +151,9 @@ impl AffinePointMontgomeryForm {
     pub fn try_from_plain_coordinates(
         x: &cmpa::MpBigEndianUIntByteSlice,
         y: &cmpa::MpBigEndianUIntByteSlice,
-        field_ops: &CurveFieldOps,
+        curve_ops: &CurveOps,
     ) -> Result<Self, CryptoError> {
+        let field_ops = curve_ops.get_field_ops();
         if !x.len_is_compatible_with(field_ops.p.len())
             || !y.len_is_compatible_with(field_ops.p.len())
             || cmpa::ct_geq_mp_mp(x, &field_ops.p).unwrap() != 0
@@ -172,8 +172,9 @@ impl AffinePointMontgomeryForm {
         mut self,
         result_x: &mut cmpa::MpMutBigEndianUIntByteSlice,
         result_y: Option<&mut cmpa::MpMutBigEndianUIntByteSlice>,
-        field_ops: &CurveFieldOps,
+        curve_ops: &CurveOps,
     ) {
+        let field_ops = curve_ops.get_field_ops();
         debug_assert!(field_ops.p.len_is_compatible_with(result_x.len()));
         let mut src_x = cmpa::MpMutNativeEndianUIntLimbsSlice::from_limbs(&mut self.mg_x);
         field_ops.convert_from_mg_form(&mut src_x);
@@ -191,8 +192,9 @@ impl AffinePointMontgomeryForm {
         &self,
         result_x: &mut cmpa::MpMutBigEndianUIntByteSlice,
         result_y: Option<&mut cmpa::MpMutBigEndianUIntByteSlice>,
-        field_ops: &CurveFieldOps,
+        curve_ops: &CurveOps,
     ) -> Result<(), CryptoError> {
+        let field_ops = curve_ops.get_field_ops();
         debug_assert!(field_ops.p.len_is_compatible_with(result_x.len()));
         let mut scratch = try_alloc_zeroizing_vec::<cmpa::LimbType>(
             cmpa::MpMutNativeEndianUIntLimbsSlice::nlimbs_for_len(field_ops.p.len()),
@@ -212,7 +214,8 @@ impl AffinePointMontgomeryForm {
     }
 
     /// Convert into projective coordinates.
-    pub fn into_projective(self, field_ops: &CurveFieldOps) -> Result<ProjectivePoint, CryptoError> {
+    #[allow(unused)]
+    fn into_projective(self, field_ops: &CurveFieldOps) -> Result<ProjectivePoint, CryptoError> {
         let mg_z = zeroize::Zeroizing::from(field_ops.mg_identity()?);
         Ok(ProjectivePoint {
             mg_x: self.mg_x,
@@ -328,9 +331,10 @@ impl ProjectivePoint {
     /// [`AffinePointMontgomeryForm`].
     pub fn into_affine(
         mut self,
-        field_ops: &CurveFieldOps,
+        curve_ops: &CurveOps,
         scratch: Option<&mut CurveOpsScratch>,
     ) -> Result<Result<AffinePointMontgomeryForm, ProjectivePointIntoAffineError>, CryptoError> {
+        let field_ops = curve_ops.get_field_ops();
         let mut scratch0: zeroize::Zeroizing<Vec<cmpa::LimbType>> = zeroize::Zeroizing::from(Vec::new());
         let mut scratch1: zeroize::Zeroizing<Vec<cmpa::LimbType>> = zeroize::Zeroizing::from(Vec::new());
         let mut scratch2: zeroize::Zeroizing<Vec<cmpa::LimbType>> = zeroize::Zeroizing::from(Vec::new());
@@ -396,9 +400,10 @@ impl ProjectivePoint {
         mut self,
         result_x: &mut cmpa::MpMutBigEndianUIntByteSlice,
         result_y: Option<&mut cmpa::MpMutBigEndianUIntByteSlice>,
-        field_ops: &CurveFieldOps,
+        curve_ops: &CurveOps,
         scratch: Option<&mut CurveOpsScratch>,
     ) -> Result<Result<(), ProjectivePointIntoAffineError>, CryptoError> {
+        let field_ops = curve_ops.get_field_ops();
         let mut scratch0: zeroize::Zeroizing<Vec<cmpa::LimbType>> = zeroize::Zeroizing::from(Vec::new());
         let mut scratch1: zeroize::Zeroizing<Vec<cmpa::LimbType>> = zeroize::Zeroizing::from(Vec::new());
         let mut scratch2: zeroize::Zeroizing<Vec<cmpa::LimbType>> = zeroize::Zeroizing::from(Vec::new());
@@ -857,17 +862,14 @@ impl Curve {
         self.cofactor_log2
     }
 
-    /// Get the curve's number of bits.
+    /// Get the width in units of bits of values in the curve's associated
+    /// scalar field.
     pub fn get_nbits(&self) -> usize {
+        debug_assert_eq!(self.nbits.div_ceil(8), self.p.len());
         self.nbits
     }
 
-    /// Get the CurveFieldOps` associated with the curve's scalar prime field.
-    pub fn field_ops(&self) -> Result<CurveFieldOps, CryptoError> {
-        CurveFieldOps::try_new(self.get_p())
-    }
-
-    /// Get the `CurveOps` for the curve..
+    /// Get the `CurveOps` for the curve.
     pub fn curve_ops(&self) -> Result<CurveOps, CryptoError> {
         CurveOps::try_new(self)
     }
@@ -974,7 +976,7 @@ pub struct CurveOps<'a> {
 
 impl<'a> CurveOps<'a> {
     fn try_new(curve: &'a Curve) -> Result<Self, CryptoError> {
-        let field_ops = curve.field_ops()?;
+        let field_ops = CurveFieldOps::try_new(curve.get_p())?;
         let (a, b) = curve.get_curve_coefficients();
         let ops = weierstrass_arithmetic::WeierstrassCurveOps::try_new(&field_ops, &a, &b)?;
         Ok(Self { curve, field_ops, ops })
@@ -999,7 +1001,7 @@ impl<'a> CurveOps<'a> {
     }
 
     /// Get the curve's `CurveFieldOps`.
-    pub fn get_field_ops(&self) -> &CurveFieldOps {
+    fn get_field_ops(&self) -> &CurveFieldOps {
         &self.field_ops
     }
 
@@ -1103,9 +1105,7 @@ fn test_point_scalar_mul_common(curve_id: tpm2_interface::TpmEccCurve) {
         )
         .unwrap();
     assert!(matches!(
-        result
-            .into_affine(curve_ops.get_field_ops(), Some(&mut scratch))
-            .unwrap(),
+        result.into_affine(&curve_ops, Some(&mut scratch)).unwrap(),
         Err(ProjectivePointIntoAffineError::PointIsIdentity)
     ));
 
@@ -1121,15 +1121,12 @@ fn test_point_scalar_mul_common(curve_id: tpm2_interface::TpmEccCurve) {
         .unwrap();
     // Go the ProjectivePoint -> AffinePointMontgomeryForm -> plain coordinates
     // route
-    let result = result
-        .into_affine(curve_ops.get_field_ops(), Some(&mut scratch))
-        .unwrap()
-        .unwrap();
+    let result = result.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
     let mut result_x_buf = try_alloc_vec::<u8>(curve.get_p().len()).unwrap();
     let mut result_x = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut result_x_buf);
     let mut result_y_buf = try_alloc_vec::<u8>(curve.get_p().len()).unwrap();
     let mut result_y = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut result_y_buf);
-    result.into_plain_coordinates(&mut result_x, Some(&mut result_y), curve_ops.get_field_ops());
+    result.into_plain_coordinates(&mut result_x, Some(&mut result_y), &curve_ops);
     let (g_x, g_y) = curve.get_generator_coordinates();
     assert_ne!(cmpa::ct_eq_mp_mp(&result_x, &g_x).unwrap(), 0);
     assert_ne!(cmpa::ct_eq_mp_mp(&result_y, &g_y).unwrap(), 0);
@@ -1152,12 +1149,7 @@ fn test_point_scalar_mul_common(curve_id: tpm2_interface::TpmEccCurve) {
     let mut result_y_buf = try_alloc_vec::<u8>(curve.get_p().len()).unwrap();
     let mut result_y = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut result_y_buf);
     result
-        .into_affine_plain_coordinates(
-            &mut result_x,
-            Some(&mut result_y),
-            curve_ops.get_field_ops(),
-            Some(&mut scratch),
-        )
+        .into_affine_plain_coordinates(&mut result_x, Some(&mut result_y), &curve_ops, Some(&mut scratch))
         .unwrap()
         .unwrap();
     assert_ne!(cmpa::ct_eq_mp_mp(&result_x, &g_x).unwrap(), 0);
@@ -1251,20 +1243,14 @@ fn test_point_add_common(curve_id: tpm2_interface::TpmEccCurve) {
     let mut scalar = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut scalar_buf);
     scalar.set_to_u8(3);
     let expected = curve_ops.point_scalar_mul(&scalar, &g, &mut scratch).unwrap();
-    let expected = expected
-        .into_affine(curve_ops.get_field_ops(), Some(&mut scratch))
-        .unwrap()
-        .unwrap();
+    let expected = expected.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
 
     // Now add it two times to itself.
     scalar.set_to_u8(1);
     let g = g.into_projective(curve_ops.get_field_ops()).unwrap();
     let two_g = curve_ops.point_add(&g, &g, &mut scratch).unwrap();
     let result = curve_ops.point_add(&two_g, &g, &mut scratch).unwrap();
-    let result = result
-        .into_affine(curve_ops.get_field_ops(), Some(&mut scratch))
-        .unwrap()
-        .unwrap();
+    let result = result.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
 
     let (expected_x, expected_y) = expected.get_mg_coordinates();
     let (result_x, result_y) = result.get_mg_coordinates();
@@ -1355,18 +1341,12 @@ fn test_point_double_repeated_common(curve_id: tpm2_interface::TpmEccCurve) {
     let mut scalar = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut scalar_buf);
     scalar.set_to_u8(4);
     let expected = curve_ops.point_scalar_mul(&scalar, &g, &mut scratch).unwrap();
-    let expected = expected
-        .into_affine(curve_ops.get_field_ops(), Some(&mut scratch))
-        .unwrap()
-        .unwrap();
+    let expected = expected.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
 
     // Now double the generator twice.
     let g = g.into_projective(curve_ops.get_field_ops()).unwrap();
     let result = curve_ops.point_double_repeated(g, 2, &mut scratch).unwrap();
-    let result = result
-        .into_affine(curve_ops.get_field_ops(), Some(&mut scratch))
-        .unwrap()
-        .unwrap();
+    let result = result.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
 
     let (expected_x, expected_y) = expected.get_mg_coordinates();
     let (result_x, result_y) = result.get_mg_coordinates();
@@ -1455,10 +1435,7 @@ fn test_point_is_on_curve_common(curve_id: tpm2_interface::TpmEccCurve) {
     let mut scalar = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut scalar_buf);
     scalar.set_to_u8(3);
     let point = curve_ops.point_scalar_mul(&scalar, &g, &mut scratch).unwrap();
-    let mut point = point
-        .into_affine(curve_ops.get_field_ops(), Some(&mut scratch))
-        .unwrap()
-        .unwrap();
+    let mut point = point.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
     assert!(curve_ops.point_is_on_curve(&point, Some(&mut scratch)).unwrap());
 
     // Now mess with the point a bit and verify it's correctly reported as not being
@@ -1553,10 +1530,7 @@ fn test_point_is_in_generator_subgroup_common(curve_id: tpm2_interface::TpmEccCu
     let mut scalar = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut scalar_buf);
     scalar.set_to_u8(3);
     let point = curve_ops.point_scalar_mul(&scalar, &g, &mut scratch).unwrap();
-    let mut point = point
-        .into_affine(curve_ops.get_field_ops(), Some(&mut scratch))
-        .unwrap()
-        .unwrap();
+    let mut point = point.into_affine(&curve_ops, Some(&mut scratch)).unwrap().unwrap();
     assert!(curve_ops.point_is_in_generator_subgroup(&point, &mut scratch).unwrap());
 
     // Now mess with the point a bit and verify it's correctly reported as not being

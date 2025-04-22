@@ -80,12 +80,7 @@ pub fn sign(
         drop(g);
         let mut e_x_buf = try_alloc_zeroizing_vec::<u8>(curve.get_p_len())?;
         let mut e_x = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut e_x_buf);
-        match e.into_affine_plain_coordinates(
-            &mut e_x,
-            None,
-            curve_ops.get_field_ops(),
-            Some(&mut curve_ops_scratch),
-        )? {
+        match e.into_affine_plain_coordinates(&mut e_x, None, &curve_ops, Some(&mut curve_ops_scratch))? {
             Ok(()) => (),
             Err(curve::ProjectivePointIntoAffineError::PointIsIdentity) => {
                 // Step c.
@@ -222,7 +217,7 @@ pub fn verify(
     drop(neg_r_q);
     let mut e_x_buf = try_alloc_zeroizing_vec::<u8>(curve.get_p_len())?;
     let mut e_x = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut e_x_buf);
-    match e.into_affine_plain_coordinates(&mut e_x, None, curve_ops.get_field_ops(), Some(&mut curve_ops_scratch))? {
+    match e.into_affine_plain_coordinates(&mut e_x, None, &curve_ops, Some(&mut curve_ops_scratch))? {
         Ok(()) => (),
         Err(curve::ProjectivePointIntoAffineError::PointIsIdentity) => {
             return Err(CryptoError::SignatureVerificationFailure);

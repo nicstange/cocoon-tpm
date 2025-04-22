@@ -11,7 +11,7 @@ use crate::{
     tpm2_interface,
     utils_common::{alloc::try_alloc_zeroizing_vec, ct_cmp, zeroize},
 };
-use cmpa::{self, MpMutUInt as _, MpUIntCommon as _};
+use cmpa::{self, MpMutUInt as _};
 use core::{convert, mem};
 
 /// ECC public key.
@@ -36,20 +36,19 @@ impl EccPublicKey {
     ///
     /// # Arguments:
     ///
-    /// * `field_ops` - The curve's associated
-    ///   [`CurveFieldOps`](curve::CurveFieldOps), usually obtained through
-    ///   [`Curve::curve_ops()`](curve::Curve::curve_ops) ->
-    ///   [`CurveOps::get_field_ops()`](curve::CurveOps::get_field_ops)].
+    /// * `curve_ops` - The curve's associated [`CurveOps`](curve::CurveOps),
+    ///   usually obtained through
+    ///   [`Curve::curve_ops()`](curve::Curve::curve_ops).
     pub fn into_tpms_ecc_point(
         self,
-        field_ops: &curve::CurveFieldOps,
+        curve_ops: &curve::CurveOps,
     ) -> Result<tpm2_interface::TpmsEccPoint<'static>, CryptoError> {
-        let mut x_buf = try_alloc_zeroizing_vec::<u8>(field_ops.get_p().len())?;
+        let mut x_buf = try_alloc_zeroizing_vec::<u8>(curve_ops.get_curve().get_p_len())?;
         let mut x = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut x_buf);
-        let mut y_buf = try_alloc_zeroizing_vec::<u8>(field_ops.get_p().len())?;
+        let mut y_buf = try_alloc_zeroizing_vec::<u8>(curve_ops.get_curve().get_p_len())?;
         let mut y = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut y_buf);
         let EccPublicKey { curve_id: _, point } = self;
-        point.into_plain_coordinates(&mut x, Some(&mut y), field_ops);
+        point.into_plain_coordinates(&mut x, Some(&mut y), curve_ops);
         let x = tpm2_interface::Tpm2bEccParameter {
             buffer: tpm2_interface::TpmBuffer::Owned(mem::take(&mut x_buf)),
         };
@@ -67,19 +66,18 @@ impl EccPublicKey {
     ///
     /// # Arguments:
     ///
-    /// * `field_ops` - The curve's associated
-    ///   [`CurveFieldOps`](curve::CurveFieldOps), usually obtained through
-    ///   [`Curve::curve_ops()`](curve::Curve::curve_ops) ->
-    ///   [`CurveOps::get_field_ops()`](curve::CurveOps::get_field_ops)].
+    /// * `curve_ops` - The curve's associated [`CurveOps`](curve::CurveOps),
+    ///   usually obtained through
+    ///   [`Curve::curve_ops()`](curve::Curve::curve_ops).
     pub fn to_tpms_ecc_point(
         &self,
-        field_ops: &curve::CurveFieldOps,
+        curve_ops: &curve::CurveOps,
     ) -> Result<tpm2_interface::TpmsEccPoint<'static>, CryptoError> {
-        let mut x_buf = try_alloc_zeroizing_vec::<u8>(field_ops.get_p().len())?;
+        let mut x_buf = try_alloc_zeroizing_vec::<u8>(curve_ops.get_curve().get_p_len())?;
         let mut x = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut x_buf);
-        let mut y_buf = try_alloc_zeroizing_vec::<u8>(field_ops.get_p().len())?;
+        let mut y_buf = try_alloc_zeroizing_vec::<u8>(curve_ops.get_curve().get_p_len())?;
         let mut y = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut y_buf);
-        self.get_point().to_plain_coordinates(&mut x, Some(&mut y), field_ops)?;
+        self.get_point().to_plain_coordinates(&mut x, Some(&mut y), curve_ops)?;
         let x = tpm2_interface::Tpm2bEccParameter {
             buffer: tpm2_interface::TpmBuffer::Owned(mem::take(&mut x_buf)),
         };
@@ -106,7 +104,7 @@ impl<'a, 'b> convert::TryFrom<(&curve::CurveOps<'a>, &tpm2_interface::TpmsEccPoi
         let point = curve::AffinePointMontgomeryForm::try_from_plain_coordinates(
             &cmpa::MpBigEndianUIntByteSlice::from_bytes(&src_x.buffer),
             &cmpa::MpBigEndianUIntByteSlice::from_bytes(&src_y.buffer),
-            curve_ops.get_field_ops(),
+            curve_ops,
         )?;
 
         let mut curve_ops_scratch = curve_ops.try_alloc_scratch()?;
@@ -173,7 +171,7 @@ impl EccKey {
             &g,
             &mut curve_ops_scratch,
         )?;
-        let point = match point.into_affine(curve_ops.get_field_ops(), Some(&mut curve_ops_scratch))? {
+        let point = match point.into_affine(curve_ops, Some(&mut curve_ops_scratch))? {
             Ok(point) => point,
             Err(curve::ProjectivePointIntoAffineError::PointIsIdentity) => {
                 return Err(CryptoError::Internal);
@@ -210,13 +208,12 @@ impl EccKey {
     ///
     /// # Arguments:
     ///
-    /// * `field_ops` - The curve's associated
-    ///   [`CurveFieldOps`](curve::CurveFieldOps), usually obtained through
-    ///   [`Curve::curve_ops()`](curve::Curve::curve_ops) ->
-    ///   [`CurveOps::get_field_ops()`](curve::CurveOps::get_field_ops)].
+    /// * `curve_ops` - The curve's associated [`CurveOps`](curve::CurveOps),
+    ///   usually obtained through
+    ///   [`Curve::curve_ops()`](curve::Curve::curve_ops).
     pub fn into_tpms(
         self,
-        field_ops: &curve::CurveFieldOps,
+        curve_ops: &curve::CurveOps,
     ) -> Result<
         (
             tpm2_interface::TpmsEccPoint<'static>,
@@ -225,7 +222,7 @@ impl EccKey {
         CryptoError,
     > {
         let Self { pub_key, priv_key } = self;
-        let pub_key = pub_key.into_tpms_ecc_point(field_ops)?;
+        let pub_key = pub_key.into_tpms_ecc_point(curve_ops)?;
         let priv_key = priv_key.map(|mut priv_key| tpm2_interface::Tpm2bEccParameter {
             buffer: tpm2_interface::TpmBuffer::Owned(mem::take(&mut priv_key.d)),
         });
@@ -277,7 +274,7 @@ impl<'a, 'b, 'c>
             let g = curve_ops.generator()?;
             let mut curve_ops_scratch = curve_ops.try_alloc_scratch()?;
             let point = curve_ops.point_scalar_mul(&d, &g, &mut curve_ops_scratch)?;
-            let point = match point.into_affine(curve_ops.get_field_ops(), Some(&mut curve_ops_scratch))? {
+            let point = match point.into_affine(curve_ops, Some(&mut curve_ops_scratch))? {
                 Ok(point) => point,
                 Err(curve::ProjectivePointIntoAffineError::PointIsIdentity) => {
                     return Err(CryptoError::KeyBinding);
@@ -293,7 +290,7 @@ impl<'a, 'b, 'c>
             point.to_plain_coordinates(
                 &mut cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut plain_x),
                 Some(&mut cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut plain_y)),
-                curve_ops.get_field_ops(),
+                curve_ops,
             )?;
 
             if (ct_cmp::ct_bytes_eq(&plain_x, &src_point.x.buffer) & ct_cmp::ct_bytes_eq(&plain_y, &src_point.y.buffer))
