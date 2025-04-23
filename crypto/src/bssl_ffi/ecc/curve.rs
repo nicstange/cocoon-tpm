@@ -8,6 +8,7 @@ use super::super::{
     bssl_bn::{BsslBn, BsslBnCtx},
     error::bssl_get_error,
 };
+use super::bssl_ec_key::BsslEcKey;
 use crate::CryptoError;
 use crate::{
     ecc::{curve, key},
@@ -646,11 +647,16 @@ impl<'a> CurveOps<'a> {
     ///   the `rng`'s [generate()](rng::RngCore::generate) primitive.
     pub fn generate_key(
         &self,
-        rng: &mut dyn rng::RngCoreDispatchable,
-        additional_rng_generate_input: Option<&[Option<&[u8]>]>,
+        _rng: &mut dyn rng::RngCoreDispatchable,
+        _additional_rng_generate_input: Option<&[Option<&[u8]>]>,
     ) -> Result<key::EccKey, CryptoError> {
-        // No special method defined for the backend.
-        key::EccKey::generate_tcg_tpm2(self, rng, additional_rng_generate_input)
+        let bssl_ec_key = BsslEcKey::generate(self)?;
+        let (public_point, private_key) = bssl_ec_key.to_key_pair(self)?;
+        Ok(key::EccKey::new_from_raw(
+            self.curve.get_curve_id(),
+            public_point,
+            private_key,
+        ))
     }
 }
 
