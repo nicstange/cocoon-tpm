@@ -174,7 +174,16 @@ impl AffinePoint {
         Ok(Self { mg_x, mg_y })
     }
 
-    /// Create a `AffinePoint` from "plain" affine coordinates.
+    /// Create an `AffinePoint` from "plain" affine coordinates.
+    ///
+    /// <div class="warning">
+    ///
+    /// A successful load of the point doesn't indicate it's mathematically
+    /// valid. Use
+    /// [`CurveOps::point_is_in_generator_subgroup()`](CurveOps::point_is_in_generator_subgroup) for
+    /// a verification.
+    ///
+    /// </div>
     pub fn try_from_plain_coordinates(
         x: &cmpa::MpBigEndianUIntByteSlice,
         y: &cmpa::MpBigEndianUIntByteSlice,
