@@ -2,8 +2,6 @@
 // Copyright 2025 SUSE LLC
 // Author: Nicolai Stange <nstange@suse.de>
 
-mod error;
-pub(super) mod hash;
-pub(super) mod symcipher;
-#[cfg(feature = "ecc")]
-pub(super) mod ecc;
+//! BoringSSL FFI backend for ECC.
+
+pub mod curve;
