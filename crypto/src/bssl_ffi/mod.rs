@@ -2,8 +2,9 @@
 // Copyright 2025 SUSE LLC
 // Author: Nicolai Stange <nstange@suse.de>
 
+mod bssl_bn;
+#[cfg(feature = "ecc")]
+pub(super) mod ecc;
 mod error;
 pub(super) mod hash;
 pub(super) mod symcipher;
-#[cfg(feature = "ecc")]
-pub(super) mod ecc;
