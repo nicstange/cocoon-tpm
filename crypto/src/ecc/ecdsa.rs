@@ -59,7 +59,7 @@ pub fn sign(
 
         // Step 3.
         let mut k_buf = try_alloc_zeroizing_vec::<u8>(order.len()).unwrap();
-        gen_random_scalar::gen_random_scalar(
+        gen_random_scalar::tcg_tpm2_gen_random_ec_scalar(
             &mut k_buf,
             &order,
             curve.get_nbits(),

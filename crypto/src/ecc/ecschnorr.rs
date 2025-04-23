@@ -64,7 +64,7 @@ pub fn sign(
         // because all the other buffers storing sensitive information will get
         // zeroized. So upon error, the only information left around is a random k.
         let mut k_buf = try_alloc_vec::<u8>(order.len())?;
-        gen_random_scalar::gen_random_scalar(
+        gen_random_scalar::tcg_tpm2_gen_random_ec_scalar(
             &mut k_buf,
             &order,
             curve.get_nbits(),

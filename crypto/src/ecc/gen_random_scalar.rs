@@ -24,7 +24,7 @@ use core::mem;
 /// * randomness from.
 /// * `additional_rng_generate_input` - Additional input to pass along to the
 ///   `rng`'s [generate()](rng::RngCore::generate) primitive.
-pub fn gen_random_scalar(
+pub fn tcg_tpm2_gen_random_ec_scalar(
     result: &mut [u8],
     order: &cmpa::MpBigEndianUIntByteSlice,
     order_nbits: usize,
@@ -186,7 +186,7 @@ fn test_gen_random_scalar() {
     for test_vec in TEST_VECS.iter() {
         let mut drbg = test_hashdrbg_instantiate(test_vec.drbg_hash_alg);
         let mut generated = [0u8; 66];
-        gen_random_scalar(
+        tcg_tpm2_gen_random_ec_scalar(
             &mut generated,
             &cmpa::MpBigEndianUIntByteSlice::from_bytes(&NIST_P521_N),
             521,

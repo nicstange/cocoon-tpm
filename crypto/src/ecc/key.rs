@@ -156,7 +156,7 @@ impl EccKey {
     ) -> Result<Self, CryptoError> {
         let curve = curve_ops.get_curve();
         let mut d = try_alloc_zeroizing_vec::<u8>(curve.get_p_len())?;
-        gen_random_scalar::gen_random_scalar(
+        gen_random_scalar::tcg_tpm2_gen_random_ec_scalar(
             &mut d,
             &curve.get_order(),
             curve.get_nbits(),
