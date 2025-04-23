@@ -2,6 +2,6 @@
 // Copyright 2025 SUSE LLC
 // Author: Nicolai Stange <nstange@suse.de>
 
-pub(super) mod ecc;
-pub(super) mod hash;
-pub(super) mod symcipher;
+//! Pure Rust backend for ECC.
+
+pub mod curve;
