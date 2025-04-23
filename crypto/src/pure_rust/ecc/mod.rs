@@ -5,3 +5,5 @@
 //! Pure Rust backend for ECC.
 
 pub mod curve;
+#[cfg(feature = "ecdsa")]
+pub mod ecdsa;
