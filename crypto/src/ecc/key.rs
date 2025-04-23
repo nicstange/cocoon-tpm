@@ -139,6 +139,28 @@ pub struct EccKey {
 }
 
 impl EccKey {
+    /// Crate a `EccKey` from raw parts.
+    ///
+    /// <div class="warning">
+    ///
+    /// For internal use only, no key validation whatsoever will be conducted.
+    ///
+    /// </div>
+    #[allow(unused)]
+    pub(crate) fn new_from_raw(
+        curve_id: tpm2_interface::TpmEccCurve,
+        public_point: curve::AffinePoint,
+        private_key: Option<zeroize::Zeroizing<Vec<u8>>>,
+    ) -> Self {
+        Self {
+            pub_key: EccPublicKey {
+                curve_id,
+                point: public_point,
+            },
+            priv_key: private_key.map(|priv_key| EccPrivateKey { d: priv_key }),
+        }
+    }
+
     /// Generate a new random ECC key pair.
     ///
     /// The key generation method implemented by the configured implementation
