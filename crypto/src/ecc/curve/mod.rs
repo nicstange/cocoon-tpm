@@ -933,7 +933,7 @@ impl Curve {
     }
 
     /// Get the curve's coefficients.
-    fn get_curve_coefficients(
+    pub(crate) fn get_curve_coefficients(
         &self,
     ) -> (
         cmpa::MpBigEndianUIntByteSlice<'static>,
@@ -972,7 +972,7 @@ impl Curve {
 
     /// Get the curve's (subgroup) generator point in affine, "plain"
     /// coordinates.
-    fn get_generator_coordinates(
+    pub(crate) fn get_generator_coordinates(
         &self,
     ) -> (
         cmpa::MpBigEndianUIntByteSlice<'static>,
