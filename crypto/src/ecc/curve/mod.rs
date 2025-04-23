@@ -193,14 +193,15 @@ impl AffinePoint {
 
     /// Convert an `AffinePoint` into "plain" affine coordinates.
     ///
-    /// Saves a scratch buffer allocation as compared to
-    /// [`to_plain_coordinates()`](Self::to_plain_coordinates).
+    /// May save a scratch buffer allocation as compared to
+    /// [`to_plain_coordinates()`](Self::to_plain_coordinates), depending on the
+    /// backend implementation.
     pub fn into_plain_coordinates(
         mut self,
         result_x: &mut cmpa::MpMutBigEndianUIntByteSlice,
         result_y: Option<&mut cmpa::MpMutBigEndianUIntByteSlice>,
         curve_ops: &CurveOps,
-    ) {
+    ) -> Result<(), CryptoError> {
         let field_ops = curve_ops.get_field_ops();
         debug_assert!(field_ops.p.len_is_compatible_with(result_x.len()));
         let mut src_x = cmpa::MpMutNativeEndianUIntLimbsSlice::from_limbs(&mut self.mg_x);
@@ -212,6 +213,8 @@ impl AffinePoint {
             field_ops.convert_from_mg_form(&mut src_y);
             result_y.copy_from(&src_y);
         }
+
+        Ok(())
     }
 
     /// Convert an `AffinePoint` to "plain" affine coordinates.
@@ -1180,7 +1183,9 @@ fn test_point_scalar_mul_common(curve_id: tpm2_interface::TpmEccCurve) {
     let mut result_x = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut result_x_buf);
     let mut result_y_buf = try_alloc_vec::<u8>(curve.get_p().len()).unwrap();
     let mut result_y = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut result_y_buf);
-    result.into_plain_coordinates(&mut result_x, Some(&mut result_y), &curve_ops);
+    result
+        .into_plain_coordinates(&mut result_x, Some(&mut result_y), &curve_ops)
+        .unwrap();
     let (g_x, g_y) = curve.get_generator_coordinates();
     assert_ne!(cmpa::ct_eq_mp_mp(&result_x, &g_x).unwrap(), 0);
     assert_ne!(cmpa::ct_eq_mp_mp(&result_y, &g_y).unwrap(), 0);

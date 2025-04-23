@@ -48,7 +48,7 @@ impl EccPublicKey {
         let mut y_buf = try_alloc_zeroizing_vec::<u8>(curve_ops.get_curve().get_p_len())?;
         let mut y = cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut y_buf);
         let EccPublicKey { curve_id: _, point } = self;
-        point.into_plain_coordinates(&mut x, Some(&mut y), curve_ops);
+        point.into_plain_coordinates(&mut x, Some(&mut y), curve_ops)?;
         let x = tpm2_interface::Tpm2bEccParameter {
             buffer: tpm2_interface::TpmBuffer::Owned(mem::take(&mut x_buf)),
         };
