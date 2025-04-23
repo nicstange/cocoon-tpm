@@ -5,3 +5,4 @@
 //! BoringSSL FFI backend for ECC.
 
 pub mod curve;
+pub mod bssl_ec_key;

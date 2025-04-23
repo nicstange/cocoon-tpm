@@ -45,7 +45,7 @@ use core::{ffi, marker, mem, ptr};
 /// the inverse direction *may* involve e.g. a modular inversion.
 pub struct AffinePoint {
     /// For Boring SSL, don't care about the actual representation.
-    bssl_ec_point: *mut bssl_bare_sys::EC_POINT,
+    pub(super) bssl_ec_point: *mut bssl_bare_sys::EC_POINT,
 }
 
 impl AffinePoint {
@@ -204,7 +204,7 @@ impl zeroize::ZeroizeOnDrop for AffinePoint {}
 /// the inverse direction *may* involve e.g. a modular inversion.
 pub struct ProjectivePoint {
     /// For Boring SSL, don't care about the actual representation.
-    bssl_ec_point: *mut bssl_bare_sys::EC_POINT,
+    pub(super) bssl_ec_point: *mut bssl_bare_sys::EC_POINT,
 }
 
 impl ProjectivePoint {
@@ -283,8 +283,8 @@ impl CurveOpsScratch {
 /// Never instantiated directly, but usually obtained through
 /// [`Curve::curve_ops()`](curve::Curve::curve_ops).
 pub struct CurveOps<'a> {
-    curve: &'a curve::Curve,
-    bssl_ec_group: ptr::NonNull<bssl_bare_sys::EC_GROUP>,
+    pub(super) curve: &'a curve::Curve,
+    pub(super) bssl_ec_group: ptr::NonNull<bssl_bare_sys::EC_GROUP>,
 }
 
 impl<'a> CurveOps<'a> {
