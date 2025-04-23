@@ -8,8 +8,11 @@ use super::super::{
     bssl_bn::{BsslBn, BsslBnCtx},
     error::bssl_get_error,
 };
-use crate::ecc::curve;
 use crate::CryptoError;
+use crate::{
+    ecc::{curve, key},
+    rng,
+};
 use crate::{tpm2_interface, utils_common::zeroize};
 use cmpa::{self, MpUIntCommon as _};
 use core::{ffi, marker, mem, ptr};
@@ -629,6 +632,25 @@ impl<'a> CurveOps<'a> {
             return Err(bssl_get_error());
         }
         Ok(r != 0)
+    }
+
+    /// Generate an EC key with the implementation backend's key generation
+    /// method of choice.
+    ///
+    /// # Arguments:
+    ///
+    /// * `rng` - The random number generator to draw random bytes from. It
+    ///   might not get invoked by the backend in case that draws randomness
+    ///   from some alternative internal rng instance.
+    /// * `additional_rng_generate_input` - Additional input to pass along to
+    ///   the `rng`'s [generate()](rng::RngCore::generate) primitive.
+    pub fn generate_key(
+        &self,
+        rng: &mut dyn rng::RngCoreDispatchable,
+        additional_rng_generate_input: Option<&[Option<&[u8]>]>,
+    ) -> Result<key::EccKey, CryptoError> {
+        // No special method defined for the backend.
+        key::EccKey::generate_tcg_tpm2(self, rng, additional_rng_generate_input)
     }
 }
 

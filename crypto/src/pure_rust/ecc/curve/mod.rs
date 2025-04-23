@@ -7,7 +7,7 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
-use crate::ecc::curve;
+use crate::{ecc::{curve, key}, rng};
 use crate::utils_common::{
     alloc::{try_alloc_vec, try_alloc_zeroizing_vec},
     zeroize,
@@ -644,5 +644,24 @@ impl<'a> CurveOps<'a> {
         // But NIST says otherwise, so do it.
         let identity = self._point_scalar_mul(&self.curve.get_order(), point, scratch)?;
         Ok(cmpa::ct_is_zero_mp(&identity.get_mg_coordinates().2).unwrap() != 0)
+    }
+
+    /// Generate an EC key with the implementation backend's key generation
+    /// method of choice.
+    ///
+    /// # Arguments:
+    ///
+    /// * `rng` - The random number generator to draw random bytes from. It
+    ///   might not get invoked by the backend in case that draws randomness
+    ///   from some alternative internal rng instance.
+    /// * `additional_rng_generate_input` - Additional input to pass along to
+    ///   the `rng`'s [generate()](rng::RngCore::generate) primitive.
+    pub fn generate_key(
+        &self,
+        rng: &mut dyn rng::RngCoreDispatchable,
+        additional_rng_generate_input: Option<&[Option<&[u8]>]>,
+    ) -> Result<key::EccKey, CryptoError> {
+        // No special method defined for the backend.
+        key::EccKey::generate_tcg_tpm2(self, rng, additional_rng_generate_input)
     }
 }

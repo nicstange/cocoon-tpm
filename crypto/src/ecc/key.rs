@@ -139,7 +139,45 @@ pub struct EccKey {
 }
 
 impl EccKey {
-    /// Generate an ECC key pair.
+    /// Generate a new random ECC key pair.
+    ///
+    /// The key generation method implemented by the configured implementation
+    /// backend will get invoked, what is what's usually wanted to respect
+    /// user choice.
+    ///
+    /// # See also:
+    ///
+    /// * [`generate_tcg_tpm2()`](Self::generate_tcg_tpm2)
+    ///
+    /// # Arguments:
+    ///
+    /// * `curve_ops` - The curve's associated [`CurveOps`](curve::CurveOps),
+    ///   usually obtained through
+    ///   [`Curve::curve_ops()`](curve::Curve::curve_ops).
+    /// * `rng` - The random number generator to draw random bytes from. It
+    ///   might not get invoked by the backend in case that draws randomness
+    ///   from some alternative internal rng instance.
+    /// * `additional_rng_generate_input` - Additional input to pass along to
+    ///   the `rng`'s [generate()](rng::RngCore::generate) primitive.
+    pub fn generate(
+        curve_ops: &curve::CurveOps,
+        rng: &mut dyn rng::RngCoreDispatchable,
+        additional_rng_generate_input: Option<&[Option<&[u8]>]>,
+    ) -> Result<Self, CryptoError> {
+        curve_ops.generate_key(rng, additional_rng_generate_input)
+    }
+
+    /// Generate an ECC key pair following the procedure specified in the TCG
+    /// TPM2 Library, Part 1, section C.5 ("ECC Key Generation").
+    ///
+    /// Note `rng` can be any [random number
+    /// generator](rng::RngCoreDispatchable), but for key derivation in line
+    /// with the TCG TPM2 Library spec, it is expected to be an instance of
+    /// type [`TcgTpm2KdfA`](crate::kdf::tcg_tpm2_kdf_a::TcgTpm2KdfA).
+    ///
+    /// # See also:
+    ///
+    /// * [`generate()`](Self::generate)
     ///
     /// # Arguments:
     ///
@@ -149,7 +187,7 @@ impl EccKey {
     /// * `rng` - The random number generator to draw random bytes from.
     /// * `additional_rng_generate_input` - Additional input to pass along to
     ///   the `rng`'s [generate()](rng::RngCore::generate) primitive.
-    pub fn generate(
+    pub fn generate_tcg_tpm2(
         curve_ops: &curve::CurveOps,
         rng: &mut dyn rng::RngCoreDispatchable,
         additional_rng_generate_input: Option<&[Option<&[u8]>]>,

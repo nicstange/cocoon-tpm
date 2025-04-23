@@ -10,6 +10,6 @@ pub mod ecdsa;
 #[cfg(feature = "ecschnorr")]
 pub mod ecschnorr;
 mod gen_random_scalar;
-mod key;
+pub(crate) mod key;
 
 pub use key::*;
