@@ -30,7 +30,8 @@ enum _EcdhCdhError {
     PointIsIdentity,
 }
 
-fn _ecdh_c_1e_1s_cdh_compute_z(
+/// ECDH `Z` parameter computation primitive.
+fn __ecdh_c_1_1_cdh_compute_z(
     curve_ops: &curve::CurveOps,
     local_priv_key: &key::EccPrivateKey,
     remote_pub_key: &key::EccPublicKey,
@@ -55,7 +56,26 @@ fn _ecdh_c_1e_1s_cdh_compute_z(
         })
 }
 
-fn _ecdh_c_1e_1s_cdh_derive_shared_secret(
+/// Derive a shared secret from `Z` by applying
+/// [`KDFe()`](kdf::tcg_tpm2_kdf_e::TcgTpm2KdfE).
+///
+/// Apply [`KDFe()`](kdf::tcg_tpm2_kdf_e::TcgTpm2KdfE) to obtain a shared secret
+/// from ECDH `Z`.
+///
+/// Refer to TCG TPM2 Library, Part 1, section C.6.1 ("ECDH") and section
+/// 11.4.10.3 ("KDFe for ECDH").
+///
+/// # Arguments:
+///
+/// * `z`: `Z` output from the ECDH primitive operation.
+/// * `kdf_hash_alg` - The hash algorithm to use for
+///   [`KDFe()`](crate::kdf::tcg_tpm2_kdf_e::TcgTpm2KdfE). The produced shared
+///   secret will have the same length as the digest.
+/// * `kdf_label` - The label to use for the
+///   [`KDFe()`](crate::kdf::tcg_tpm2_kdf_e::TcgTpm2KdfE)'s `usage` parameter.
+/// * `pub_key_u_x` - x-coordinate of party `U`'s public key.
+/// * `pub_key_v_x` - x-coordinate of party `V`'s public key.
+pub(crate) fn _ecdh_c_1e_1s_cdh_derive_shared_secret(
     z: &[u8],
     kdf_hash_alg: tpm2_interface::TpmiAlgHash,
     kdf_label: &str,
@@ -84,25 +104,26 @@ fn _ecdh_c_1e_1s_cdh_derive_shared_secret(
     Ok(shared_secret)
 }
 
-fn _ecdh_c_1e_1s_cdh_party_v_z_gen(
+fn _ecdh_c_1_1_cdh_compute_z(
     curve_ops: &curve::CurveOps,
-    key_v: &key::EccKey,
-    pub_key_u_plain: &tpm2_interface::TpmsEccPoint<'_>,
+    local_priv_key: &key::EccKey,
+    remote_pub_key_plain: &tpm2_interface::TpmsEccPoint<'_>,
 ) -> Result<zeroize::Zeroizing<Vec<u8>>, CryptoError> {
-    // In the terminology of NIST SP800-56Ar3, party V (the local party) contributes
-    // the static key, party U (the remote party) an ephemeral key.
     // First convert the externally provided TpmsEccPoint into the internal
-    // EccPublicKey representation. This stabilizes pub_key_u_plain, next to
-    // validating it.
-    let pub_key_u = key::EccPublicKey::try_from((curve_ops, pub_key_u_plain))?;
+    // EccPublicKey representation. Note thay this validates it.
+    let remote_pub_key = key::EccPublicKey::try_from((curve_ops, remote_pub_key_plain))?;
 
     // The CDH primitive would end up at the point at infinity only if the peer sent
     // some bogus ephemeral public key, abort in this case.
-    _ecdh_c_1e_1s_cdh_compute_z(curve_ops, key_v.priv_key().ok_or(CryptoError::NoKey)?, &pub_key_u)?
-        .map_err(|_| CryptoError::InvalidResult)
+    __ecdh_c_1_1_cdh_compute_z(
+        curve_ops,
+        local_priv_key.priv_key().ok_or(CryptoError::NoKey)?,
+        &remote_pub_key,
+    )?
+    .map_err(|_| CryptoError::InvalidResult)
 }
 
-/// Generate the `Z` from a local private and a remote public key.
+/// Compute the ECDH `Z` from a local private and a remote public key.
 ///
 /// <div class="warning">
 ///
@@ -110,17 +131,29 @@ fn _ecdh_c_1e_1s_cdh_party_v_z_gen(
 /// suitable KDF.
 ///
 /// </div>
-pub fn ecdh_c_1e_1s_cdh_party_v_z_gen(
-    key_v: &key::EccKey,
-    pub_key_u_plain: &tpm2_interface::TpmsEccPoint<'_>,
+///
+/// # Arguments:
+///
+/// * `local_priv_key` - The local private key.
+/// * `remote_pub_key_plain` - The remote public key.
+pub fn ecdh_c_1_1_cdh_compute_z(
+    local_priv_key: &key::EccKey,
+    remote_pub_key_plain: &tpm2_interface::TpmsEccPoint<'_>,
 ) -> Result<zeroize::Zeroizing<Vec<u8>>, CryptoError> {
-    let curve = curve::Curve::new(key_v.pub_key().get_curve_id())?;
+    let curve = curve::Curve::new(local_priv_key.pub_key().get_curve_id())?;
     let curve_ops = curve.curve_ops()?;
-    _ecdh_c_1e_1s_cdh_party_v_z_gen(&curve_ops, key_v, pub_key_u_plain)
+    _ecdh_c_1_1_cdh_compute_z(&curve_ops, local_priv_key, remote_pub_key_plain)
 }
 
-/// Generate a shared encryption key from a local static private key and a
-/// remote public key.
+/// Generate a shared encryption on behalf of a responder from a local static
+/// private key and a remote (ephemeral) public key.
+///
+/// The KDF used for secret derivation is
+/// [`KDFe()`](crate::kdf::tcg_tpm2_kdf_e::TcgTpm2KdfE), with
+/// party `U` identifying the remote initiator party contributing its
+/// (ephemeral) key's public part and party `V` the local responder party
+/// supplying its static private key. Refer to TCG TPM2 Library, Part 1, section
+/// 11.4.10.3 ("KDFe for ECDH").
 ///
 /// # Arguments:
 ///
@@ -142,7 +175,9 @@ pub fn ecdh_c_1e_1s_cdh_party_v_key_gen(
     let curve = curve::Curve::new(key_v.pub_key().get_curve_id())?;
     let curve_ops = curve.curve_ops()?;
 
-    let z = _ecdh_c_1e_1s_cdh_party_v_z_gen(&curve_ops, key_v, pub_key_u_plain)?;
+    // In the terminology of NIST SP800-56Ar3, party V (the local party) contributes
+    // the static key, party U (the remote party) an ephemeral key.
+    let z = _ecdh_c_1_1_cdh_compute_z(&curve_ops, key_v, pub_key_u_plain)?;
 
     let pub_key_u_x = &pub_key_u_plain.x.buffer;
     let mut pub_key_v_x = try_alloc_vec::<u8>(curve_ops.get_curve().get_p_len())?;
@@ -162,6 +197,11 @@ pub fn ecdh_c_1e_1s_cdh_party_v_key_gen(
 /// key part being destroyed after the operation is complete.
 /// The public part gets returned alongside the shared secret.
 ///
+/// The KDF used for secret derivation is
+/// [`KDFe()`](kdf::tcg_tpm2_kdf_e::TcgTpm2KdfE), with party `U` identifying the
+/// local party contributing the ephemeral key and party `V` the remote party
+/// supplying its static key's public part.
+///
 /// # Arguments:
 ///
 /// * `kdf_hash_alg` - The hash algorithm to use for
@@ -171,7 +211,9 @@ pub fn ecdh_c_1e_1s_cdh_party_v_key_gen(
 ///   [`KDFe()`](kdf::tcg_tpm2_kdf_e::TcgTpm2KdfE)'s `usage` parameter.
 /// * `pub_key_v` - The remote public key.
 /// * `rng` - The [random number generator](rng::RngCore) to be used for
-///   generating the ephemeral local key.
+///   generating the ephemeral local key. It might not get invoked by the
+///   backend in case that draws randomness from some alternative internal rng
+///   instance.
 /// * `additional_rng_generate_input` - Additional input to pass along to the
 ///   `rng`'s [generate()](rng::RngCore::generate) primitive.
 pub fn ecdh_c_1e_1s_cdh_party_u_key_gen(
@@ -197,7 +239,7 @@ pub fn ecdh_c_1e_1s_cdh_party_u_key_gen(
 
         let key_u = key::EccKey::generate(&curve_ops, rng, additional_rng_generate_input)?;
         let priv_key_u = key_u.priv_key().unwrap();
-        let z = match _ecdh_c_1e_1s_cdh_compute_z(&curve_ops, priv_key_u, pub_key_v)? {
+        let z = match __ecdh_c_1_1_cdh_compute_z(&curve_ops, priv_key_u, pub_key_v)? {
             Ok(z) => z,
             Err(e) => match e {
                 _EcdhCdhError::PointIsIdentity => {
