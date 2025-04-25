@@ -6,5 +6,7 @@
 
 pub mod bssl_ec_key;
 pub mod curve;
+#[cfg(feature = "ecdh")]
+pub mod ecdh;
 #[cfg(feature = "ecdsa")]
 pub mod ecdsa;
