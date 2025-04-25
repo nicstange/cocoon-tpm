@@ -209,7 +209,8 @@ pub fn ecdh_c_1e_1s_cdh_party_v_key_gen(
 ///   will have the same length as the digest.
 /// * `kdf_label` - The label to use for the
 ///   [`KDFe()`](kdf::tcg_tpm2_kdf_e::TcgTpm2KdfE)'s `usage` parameter.
-/// * `pub_key_v` - The remote public key.
+/// * `curve_id`: The elliptic curve id.
+/// * `pub_key_v_plain` - The remote public key.
 /// * `rng` - The [random number generator](rng::RngCore) to be used for
 ///   generating the ephemeral local key. It might not get invoked by the
 ///   backend in case that draws randomness from some alternative internal rng
@@ -219,15 +220,20 @@ pub fn ecdh_c_1e_1s_cdh_party_v_key_gen(
 pub fn ecdh_c_1e_1s_cdh_party_u_key_gen(
     kdf_hash_alg: tpm2_interface::TpmiAlgHash,
     kdf_label: &str,
-    pub_key_v: &key::EccPublicKey,
+    curve_id: tpm2_interface::TpmEccCurve,
+    pub_key_v_plain: &tpm2_interface::TpmsEccPoint<'_>,
     rng: &mut dyn rng::RngCoreDispatchable,
     additional_rng_generate_input: Option<&[Option<&[u8]>]>,
 ) -> Result<(zeroize::Zeroizing<Vec<u8>>, tpm2_interface::TpmsEccPoint<'static>), CryptoError> {
     // In the terminology of NIST SP800-56Ar3, party V contributes the static key,
     // party U (the local party) an ephemeral key. Generate the ephemeral key
     // first.
-    let curve = curve::Curve::new(pub_key_v.get_curve_id())?;
+    let curve = curve::Curve::new(curve_id)?;
     let curve_ops = curve.curve_ops()?;
+
+    // Convert the externally provided TpmsEccPoint into the internal
+    // EccPublicKey representation. Note thay this validates it.
+    let pub_key_v = key::EccPublicKey::try_from((&curve_ops, pub_key_v_plain))?;
 
     const MAX_RETRIES: u32 = 16;
     let mut remaining_retries = MAX_RETRIES;
@@ -239,7 +245,7 @@ pub fn ecdh_c_1e_1s_cdh_party_u_key_gen(
 
         let key_u = key::EccKey::generate(&curve_ops, rng, additional_rng_generate_input)?;
         let priv_key_u = key_u.priv_key().unwrap();
-        let z = match __ecdh_c_1_1_cdh_compute_z(&curve_ops, priv_key_u, pub_key_v)? {
+        let z = match __ecdh_c_1_1_cdh_compute_z(&curve_ops, priv_key_u, &pub_key_v)? {
             Ok(z) => z,
             Err(e) => match e {
                 _EcdhCdhError::PointIsIdentity => {
@@ -253,15 +259,10 @@ pub fn ecdh_c_1e_1s_cdh_party_u_key_gen(
 
     let pub_key_u_plain = pub_key_u.into_tpms_ecc_point(&curve_ops)?;
     let pub_key_u_x = &pub_key_u_plain.x.buffer;
-    let mut pub_key_v_x = try_alloc_vec::<u8>(curve_ops.get_curve().get_p_len())?;
-    pub_key_v.get_point().to_plain_coordinates(
-        &mut cmpa::MpMutBigEndianUIntByteSlice::from_bytes(&mut pub_key_v_x),
-        None,
-        &curve_ops,
-    )?;
+    let pub_key_v_x = &pub_key_v_plain.x.buffer;
 
     Ok((
-        _ecdh_c_1e_1s_cdh_derive_shared_secret(&z, kdf_hash_alg, kdf_label, pub_key_u_x, &pub_key_v_x)?,
+        _ecdh_c_1e_1s_cdh_derive_shared_secret(&z, kdf_hash_alg, kdf_label, pub_key_u_x, pub_key_v_x)?,
         pub_key_u_plain,
     ))
 }
@@ -279,10 +280,11 @@ fn test_ecdh_c_1e_1s_cdh_key_gen() {
 
     // First generate a static test key for party V.
     let key_v = key::EccKey::generate(&curve_ops, &mut drbg, None).unwrap();
+    let pub_key_v_plain = key_v.pub_key().to_tpms_ecc_point(&curve_ops).unwrap();
 
     // Let party U initiated the ECDH establishment.
     let (shared_secret_u, mut pub_key_u_plain) =
-        ecdh_c_1e_1s_cdh_party_u_key_gen(kdf_hash_alg, KDF_LABEL, key_v.pub_key(), &mut drbg, None).unwrap();
+        ecdh_c_1e_1s_cdh_party_u_key_gen(kdf_hash_alg, KDF_LABEL, curve_id, &pub_key_v_plain, &mut drbg, None).unwrap();
 
     // And let party V establish the shared secret with the ephemeral public key
     // conveyed by party U.
