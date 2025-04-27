@@ -7,4 +7,5 @@ mod bssl_bn;
 pub(super) mod ecc;
 mod error;
 pub(super) mod hash;
+pub(super) mod rng;
 pub(super) mod symcipher;
