@@ -17,10 +17,18 @@ use crate::{
 
 use core::convert;
 
-pub mod chained;
-pub mod hash_drbg;
-#[cfg(all(feature = "enable_x86_64_rdseed", target_arch = "x86_64"))]
-pub mod x86_64_rdseed;
+mod chained;
+pub use chained::*;
+
+pub use crate::backend::rng::*;
+
+// The HashDrbg is special. Striclty speaking it belongs into the pure_rust
+// backend mod, but is used by a number of Known Answer Tests. So import from
+// here.
+#[cfg(any(not(feature = "boringssl"), test))]
+mod hash_drbg;
+#[cfg(any(not(feature = "boringssl"), test))]
+pub use hash_drbg::*;
 
 /// Error type returned by [`RngCore::generate()`](RngCore::generate).
 #[derive(Debug)]
@@ -219,14 +227,19 @@ pub trait ReseedableRngCore: RngCore + Sized {
     }
 }
 
-#[cfg(test)]
-pub fn test_rng() -> hash_drbg::HashDrbg {
+#[cfg(all(test, not(feature = "boringssl")))]
+pub fn test_rng() -> HashDrbg {
     extern crate alloc;
     use super::hash;
     use alloc::vec;
 
     let hash_alg = hash::test_hash_alg();
-    let min_entropy_len = hash_drbg::HashDrbg::min_seed_entropy_len(hash_alg);
+    let min_entropy_len = HashDrbg::min_seed_entropy_len(hash_alg);
     let entropy = vec![0u8; min_entropy_len];
-    hash_drbg::HashDrbg::instantiate(hash_alg, &entropy, None, None).unwrap()
+    HashDrbg::instantiate(hash_alg, &entropy, None, None).unwrap()
+}
+
+#[cfg(all(test, feature = "boringssl"))]
+pub fn test_rng() -> BsslRandBytesRng {
+    BsslRandBytesRng::new()
 }

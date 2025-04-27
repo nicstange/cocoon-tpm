@@ -7,10 +7,10 @@
 
 #![cfg(all(feature = "enable_x86_64_rdseed", target_arch = "x86_64"))]
 
-use super::{RngCore, RngGenerateError};
 use crate::utils_common::zeroize;
 use crate::{
     io_slices::{CryptoPeekableIoSlicesIter, CryptoWalkableIoSlicesMutIter},
+    rng::{RngCore, RngGenerateError},
     CryptoError,
 };
 use core::{arch::asm, convert, mem};
@@ -111,7 +111,7 @@ pub enum X86RdSeedRngInstantiateError {
 ///
 /// The `X86RdSeedRng` is not intended to be used directly for [randomness
 /// generation](RngCore::generate), but rather to serve as a seeding parent in
-/// e.g. a [chained](super::chained::ChainedRng) construction.
+/// e.g. a [chained](crate::rng::ChainedRng) construction.
 ///
 /// </div>
 pub struct X86RdSeedRng {}

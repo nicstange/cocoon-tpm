@@ -368,12 +368,12 @@ static TEST_VECS: &[TestVec] = &[
 ];
 
 #[cfg(test)]
-fn test_hashdrbg_instantiate(hash_alg: tpm2_interface::TpmiAlgHash) -> rng::hash_drbg::HashDrbg {
+fn test_hashdrbg_instantiate(hash_alg: tpm2_interface::TpmiAlgHash) -> rng::HashDrbg {
     use alloc::vec;
 
-    let entropy_len = rng::hash_drbg::HashDrbg::min_seed_entropy_len(hash_alg);
+    let entropy_len = rng::HashDrbg::min_seed_entropy_len(hash_alg);
     let entropy = vec![0u8; entropy_len];
-    rng::hash_drbg::HashDrbg::instantiate(hash_alg, &entropy, None, None).unwrap()
+    rng::HashDrbg::instantiate(hash_alg, &entropy, None, None).unwrap()
 }
 
 #[test]
