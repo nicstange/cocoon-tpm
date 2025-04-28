@@ -12,9 +12,8 @@ default = [
     "sha256",  "sha384", "sha512",
     "aes",
     "cbc", "cfb",
-    "rsa", "oaep", "rsapss", "rsaes", "rsassa",
-    "ecc", "ecdh", "ecdsa", "ecschnorr",
-    "ecc_nist_p192", "ecc_nist_p224", "ecc_nist_p256", "ecc_nist_p384", "ecc_nist_p521",
+    "ecc", "ecdh", "ecdsa",
+    "ecc_nist_p224", "ecc_nist_p256", "ecc_nist_p384", "ecc_nist_p521",
 ]
 
 zeroize = ["dep:zeroize"]

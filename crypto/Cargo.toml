@@ -9,13 +9,11 @@ doctest = false
 [features]
 default = [
     "enable_arch_math_asm", "enable_x86_64_rdseed", "zeroize",
-    "boringssl",
     "sha256", "sha384", "sha512",
-    "aes", # "camellia", "sm4",
+    "aes",
     "cfb", "cbc", "ofb", "ecb", "ctr",
-    "rsa", "oaep", "rsapss", "rsaes", "rsassa",
-    "ecc", "ecdh", "ecdsa", "ecschnorr",
-    "ecc_nist_p192", "ecc_nist_p224", "ecc_nist_p256", "ecc_nist_p384", "ecc_nist_p521",
+    "ecc", "ecdh", "ecdsa",
+    "ecc_nist_p224", "ecc_nist_p256", "ecc_nist_p384", "ecc_nist_p521",
 ]
 
 # Use CPU instructions for basic arithmetic directly. Gives a
