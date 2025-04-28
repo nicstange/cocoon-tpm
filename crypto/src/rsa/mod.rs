@@ -4,6 +4,9 @@
 
 //! RSA implementation.
 
+#[cfg(feature = "boringssl")]
+compile_error!("RSA not supported with BoringSSL backend");
+
 mod crt;
 mod encrypt;
 mod key;
