@@ -4,6 +4,9 @@
 
 //! Implementation of the EC Schnorr signature scheme.
 
+#[cfg(feature = "boringssl")]
+compile_error!("EC Schnorr signatures not supported with BoringSSL backend");
+
 extern crate alloc;
 use alloc::vec::Vec;
 
