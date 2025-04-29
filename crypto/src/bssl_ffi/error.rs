@@ -6,14 +6,30 @@ use crate::error::CryptoError;
 
 use core::{convert, ffi};
 
+/// Reimplementation of BoringSSL's `ERR_GET_LIB()`.
+///
+/// BoringSSL's ERR_GET_LIB() is inlined and thus, inaccessible through bindgen if static
+/// functions haven't been wrapped up.
+fn err_get_lib(packed_error: u32) -> ffi::c_int {
+    ((packed_error >> 24) & 0xff) as ffi::c_int
+}
+
+/// Reimplementation of BoringSSL's `ERR_GET_REASON()`.
+///
+/// BoringSSL's ERR_GET_REASON() is inlined and thus, inaccessible through bindgen if static
+/// functions haven't been wrapped up.
+fn err_get_reason(packed_error: u32) -> ffi::c_int {
+    (packed_error & 0xfffu32) as ffi::c_int
+}
+
 pub struct BSSLError {
     pub packed_error: u32,
 }
 
 impl BSSLError {
     pub fn is_code(&self, expected_lib: ffi::c_uint, expected_reason: ffi::c_int) -> bool {
-        let unpacked_lib = unsafe { bssl_bare_sys::ERR_GET_LIB(self.packed_error) };
-        let unpacked_reason = unsafe { bssl_bare_sys::ERR_GET_REASON(self.packed_error) };
+        let unpacked_lib = err_get_lib(self.packed_error);
+        let unpacked_reason = err_get_reason(self.packed_error);
         unpacked_lib as ffi::c_uint == expected_lib && unpacked_reason == expected_reason
     }
 }
@@ -37,7 +53,7 @@ pub fn bssl_get_error() -> CryptoError {
 
 impl convert::From<BSSLError> for CryptoError {
     fn from(value: BSSLError) -> Self {
-        let reason = unsafe { bssl_bare_sys::ERR_GET_REASON(value.packed_error) };
+        let reason = err_get_reason(value.packed_error);
 
         // "The following values are global reason codes. They may occur in any
         // library."
@@ -51,7 +67,7 @@ impl convert::From<BSSLError> for CryptoError {
             _ => (),
         }
 
-        let lib = unsafe { bssl_bare_sys::ERR_GET_LIB(value.packed_error) };
+        let lib = err_get_lib(value.packed_error);
         match lib as ffi::c_uint {
             bssl_bare_sys::ERR_LIB_NONE => CryptoError::UnspecifiedFailure,
             bssl_bare_sys::ERR_LIB_SYS => CryptoError::UnspecifiedFailure,
