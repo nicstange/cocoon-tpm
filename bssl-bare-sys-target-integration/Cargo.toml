@@ -1,0 +1,8 @@
+[package]
+name = "bssl-bare-sys-target-integration"
+version = "0.1.0"
+edition = "2021"
+
+links = "bssl-bare-sys-target-integration"
+
+[dependencies]

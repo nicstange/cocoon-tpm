@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = [ "crypto", "bssl-bare-sys", "tpm2-interface", "utils-common"]
+members = [ "crypto", "bssl-bare-sys", "tpm2-interface", "utils-common", "bssl-bare-sys-target-integration"]
