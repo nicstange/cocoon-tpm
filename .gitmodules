@@ -1,3 +1,4 @@
 [submodule "crypto/bssl-bare-sys/third-party/boringssl"]
 	path = bssl-bare-sys/third-party/boringssl
-	url = https://github.com/google/boringssl.git
+	url = https://github.com/nicstange/boringssl.git
+	branch = no-poly1305_vec-for-no_asm
