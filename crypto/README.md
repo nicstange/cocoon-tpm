@@ -3,11 +3,15 @@
 This `[no_std]` crates provides all cryptographic primitives needed by
 any other components of the project.
 
-Note that grouping all cryptography implementation related code
-together in a single crate with a well-defined interface makes it
-fairly straight-forward to create alternative drop-in replacements
-binding against other crypto libraries.
+See the output of `cargo doc` for an API reference.
 
+Two possible backend implementations are supported: a pure Rust one
+and one linking against
+[BoringSSL](https://github.com/google/boringssl). By default, the
+pure Rust backend is selected. For the BoringSSL one, enable the
+`boringssl` Cargo feature.
+
+## Pure Rust backend
 For any symmetric cryptography, most notably hashes and block ciphers,
 the respective `cocoon-tpm-crypto` primitives simply route to the
 respective implementations provided by the [RustCrypto
@@ -21,4 +25,18 @@ and ECC implementations, built on the [`Cryptographic MultiPrecision
 Arithmetic crate`](https://github.com/nicstange/cmpa-rs) enabling
 complete control over the buffer allocations.
 
-See the output of `cargo doc` for a reference.
+## BoringSSL backend
+When the BoringSSL backend is selected, i.e. if the `boringssl` Cargo
+feature is enabled, all cryptography requests will get forwarded to
+BoringSSL through a FFI.
+
+The set of supported algorithms is necessarily restricted to what's
+provided by BoringSSL. Furthermore, it's currently not possible to
+use RSA with the BoringSSL backend.
+
+The bare FFI itself, including a compilation of BoringSSL, is handled
+by a separate crate, `bssl-bare-sys`.  Refer to its documentation for
+hints about integration into freestanding/embedded-like environments.
+
+**Note that the copy of BoringSSL is distributed as a git submodule
+under the `bssl-bare-sys` crate, it must get initialized first!**
