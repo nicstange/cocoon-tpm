@@ -16,7 +16,7 @@ links = "bssl"
 target-integration = ["dep:bssl-bare-sys-target-integration"]
 
 [dependencies]
-bssl-bare-sys-target-integration = { git = "https://github.com/nicstange/cocoon-tpm.git", optional = true }
+bssl-bare-sys-target-integration = { workspace = true, optional = true }
 
 [build-dependencies]
 bindgen = "0.71.1"
