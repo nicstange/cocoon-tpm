@@ -23,6 +23,10 @@
 //! That instance can then be used to
 //! [decrypt](SymBlockCipherModeDecryptionInstance::decrypt) one or more
 //! messages.
+
+// Lifetimes are not obvious at first sight here, make the explicit.
+#![allow(clippy::needless_lifetimes)]
+
 extern crate alloc;
 use alloc::vec::Vec;
 

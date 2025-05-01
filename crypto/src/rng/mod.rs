@@ -4,6 +4,9 @@
 
 //! Cryptographic random number generator interface traits and implementations.
 
+// Lifetimes are not obvious at first sight here, make the explicit.
+#![allow(clippy::needless_lifetimes)]
+
 use crate::utils_common::{
     alloc::try_alloc_zeroizing_vec,
     io_slices::{self, IoSlicesIterCommon as _},

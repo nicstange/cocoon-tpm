@@ -4,6 +4,9 @@
 
 //! BoringSSL FFI backend for hash algorithms.
 
+// Lifetimes are not obvious at first sight here, make the explicit.
+#![allow(clippy::needless_lifetimes)]
+
 extern crate alloc;
 
 use crate::bssl_ffi;

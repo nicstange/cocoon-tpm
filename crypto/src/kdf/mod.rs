@@ -7,6 +7,10 @@
 //! The main interface for use with any key generation primitives is
 //! [`VariableChunkOutputKdf`], which implements [`RngCore`](rng::RngCore)
 //! commonly expected by those.
+
+// Lifetimes are not obvious at first sight here, make the explicit.
+#![allow(clippy::needless_lifetimes)]
+
 extern crate alloc;
 use alloc::vec::Vec;
 

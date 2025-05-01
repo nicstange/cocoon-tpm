@@ -11,6 +11,9 @@
 //! * Boring SSL provides the CFB mode through EVP only through the decrepit
 //!   library.
 
+// Lifetimes are not obvious at first sight here, make the explicit.
+#![allow(clippy::needless_lifetimes)]
+
 extern crate alloc;
 use alloc::boxed::Box;
 

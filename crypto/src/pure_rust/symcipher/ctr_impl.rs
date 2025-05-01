@@ -189,7 +189,7 @@ where
     outer_closure: BC,
 }
 
-impl<'a, BS, BC> BlockSizeUser for Closure<'a, BS, BC>
+impl<BS, BC> BlockSizeUser for Closure<'_, BS, BC>
 where
     BS: ArrayLength<u8>,
     BC: BlockClosure<BlockSize = BS>,
@@ -197,7 +197,7 @@ where
     type BlockSize = BS;
 }
 
-impl<'a, BS, BC> BlockClosure for Closure<'a, BS, BC>
+impl<BS, BC> BlockClosure for Closure<'_, BS, BC>
 where
     BS: ArrayLength<u8>,
     BC: BlockClosure<BlockSize = BS>,
@@ -227,7 +227,7 @@ where
     inner_backend: &'a mut BK,
 }
 
-impl<'a, BS, BK> BlockSizeUser for Backend<'a, BS, BK>
+impl<BS, BK> BlockSizeUser for Backend<'_, BS, BK>
 where
     BS: ArrayLength<u8>,
     BK: BlockBackend<BlockSize = BS>,
@@ -235,7 +235,7 @@ where
     type BlockSize = BS;
 }
 
-impl<'a, BS, BK> ParBlocksSizeUser for Backend<'a, BS, BK>
+impl<BS, BK> ParBlocksSizeUser for Backend<'_, BS, BK>
 where
     BS: ArrayLength<u8>,
     BK: BlockBackend<BlockSize = BS>,
@@ -243,7 +243,7 @@ where
     type ParBlocksSize = U1;
 }
 
-impl<'a, BS, BK> BlockBackend for Backend<'a, BS, BK>
+impl<BS, BK> BlockBackend for Backend<'_, BS, BK>
 where
     BS: ArrayLength<u8>,
     BK: BlockBackend<BlockSize = BS>,
