@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use super::super::{bssl_bn::BsslBn, error::bssl_get_error};
 use super::curve;
 use crate::utils_common::{alloc::try_alloc_zeroizing_vec, zeroize};
-use crate::{ecc, CryptoError};
+use crate::{CryptoError, ecc};
 
 pub struct BsslEcKey {
     bssl_ec_key: *mut bssl_bare_sys::EC_KEY,

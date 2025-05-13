@@ -16,8 +16,9 @@ use crate::utils_common::{
     zeroize,
 };
 use crate::{
+    CryptoError,
     io_slices::{CryptoPeekableIoSlicesIter, CryptoWalkableIoSlicesMutIter},
-    rng, CryptoError,
+    rng,
 };
 
 pub mod mgf1;

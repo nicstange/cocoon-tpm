@@ -8,7 +8,7 @@ extern crate alloc;
 
 use crate::bssl_ffi;
 use crate::hash::hash_alg_digest_len;
-use crate::{io_slices::CryptoIoSlicesIter, CryptoError};
+use crate::{CryptoError, io_slices::CryptoIoSlicesIter};
 use crate::{
     tpm2_interface,
     utils_common::{alloc::try_alloc_zeroizing_vec, zeroize},

@@ -7,8 +7,8 @@
 //! [`BackendIteratorError`](io_slices::IoSlicesIterCommon::BackendIteratorError) fixed to
 //! [`CryptoError`].
 
-use crate::utils_common::io_slices::{self, IoSlicesIterCommon as _};
 use crate::CryptoError;
+use crate::utils_common::io_slices::{self, IoSlicesIterCommon as _};
 use core::convert;
 
 /// [`IoSlicesIter`](io_slices::IoSlicesIter) with the associated

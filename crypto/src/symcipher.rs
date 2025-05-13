@@ -27,8 +27,9 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 use crate::{
+    CryptoError,
     io_slices::{CryptoPeekableIoSlicesMutIter, CryptoWalkableIoSlicesIter, CryptoWalkableIoSlicesMutIter},
-    rng, CryptoError,
+    rng,
 };
 use crate::{
     tpm2_interface,

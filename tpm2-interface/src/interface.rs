@@ -8,8 +8,6 @@ extern crate alloc;
 use alloc::{boxed, vec};
 
 #[allow(unused_imports)]
-use vec::Vec;
-#[allow(unused_imports)]
 use boxed::Box;
 #[allow(unused_imports)]
 use core::cmp;
@@ -18,6 +16,8 @@ use core::mem;
 use core::ops;
 #[allow(unused_imports)]
 use core::ptr;
+#[allow(unused_imports)]
+use vec::Vec;
 
 #[derive(Clone, Copy, Debug)]
 pub enum TpmErr {
@@ -28,7 +28,8 @@ pub enum TpmErr {
 #[allow(unused)]
 fn copy_vec_from_slice<T: Copy>(slice: &[T]) -> Result<Vec<T>, TpmErr> {
     let mut v = Vec::new();
-    v.try_reserve_exact(slice.len()).map_err(|_| TpmErr::Rc(TpmRc::MEMORY))?;
+    v.try_reserve_exact(slice.len())
+        .map_err(|_| TpmErr::Rc(TpmRc::MEMORY))?;
     v.extend_from_slice(slice);
     Ok(v)
 }
@@ -43,10 +44,11 @@ impl<'a> TpmBuffer<'a> {
     pub fn into_owned(mut self) -> Result<TpmBuffer<'static>, TpmErr> {
         let o = match &mut self {
             Self::Borrowed(b) => copy_vec_from_slice(b)?,
-            Self::Owned(o) => {
+            Self::Owned(o) =>
+            {
                 #[allow(clippy::mem_replace_with_default)]
                 mem::replace(o, Vec::new())
-            },
+            }
         };
         Ok(TpmBuffer::<'static>::Owned(o))
     }
@@ -107,7 +109,8 @@ fn split_slice_at_mut<T>(s: &mut [T], mid: usize) -> Result<(&mut [T], &mut [T])
 #[allow(unused)]
 pub fn unmarshal_u8(buf: &[u8]) -> Result<(&[u8], u8), TpmErr> {
     let (consumed, buf) = split_slice_at(buf, mem::size_of::<u8>())?;
-    let consumed = <&[u8; mem::size_of::<u8>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
+    let consumed =
+        <&[u8; mem::size_of::<u8>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
     let value = u8::from_be_bytes(*consumed);
     Ok((buf, value))
 }
@@ -115,7 +118,8 @@ pub fn unmarshal_u8(buf: &[u8]) -> Result<(&[u8], u8), TpmErr> {
 #[allow(unused)]
 pub fn unmarshal_i8(buf: &[u8]) -> Result<(&[u8], i8), TpmErr> {
     let (consumed, buf) = split_slice_at(buf, mem::size_of::<i8>())?;
-    let consumed = <&[u8; mem::size_of::<i8>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
+    let consumed =
+        <&[u8; mem::size_of::<i8>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
     let value = i8::from_be_bytes(*consumed);
     Ok((buf, value))
 }
@@ -123,7 +127,8 @@ pub fn unmarshal_i8(buf: &[u8]) -> Result<(&[u8], i8), TpmErr> {
 #[allow(unused)]
 pub fn unmarshal_u16(buf: &[u8]) -> Result<(&[u8], u16), TpmErr> {
     let (consumed, buf) = split_slice_at(buf, mem::size_of::<u16>())?;
-    let consumed = <&[u8; mem::size_of::<u16>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
+    let consumed =
+        <&[u8; mem::size_of::<u16>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
     let value = u16::from_be_bytes(*consumed);
     Ok((buf, value))
 }
@@ -131,7 +136,8 @@ pub fn unmarshal_u16(buf: &[u8]) -> Result<(&[u8], u16), TpmErr> {
 #[allow(unused)]
 pub fn unmarshal_i16(buf: &[u8]) -> Result<(&[u8], i16), TpmErr> {
     let (consumed, buf) = split_slice_at(buf, mem::size_of::<i16>())?;
-    let consumed = <&[u8; mem::size_of::<i16>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
+    let consumed =
+        <&[u8; mem::size_of::<i16>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
     let value = i16::from_be_bytes(*consumed);
     Ok((buf, value))
 }
@@ -139,7 +145,8 @@ pub fn unmarshal_i16(buf: &[u8]) -> Result<(&[u8], i16), TpmErr> {
 #[allow(unused)]
 pub fn unmarshal_u32(buf: &[u8]) -> Result<(&[u8], u32), TpmErr> {
     let (consumed, buf) = split_slice_at(buf, mem::size_of::<u32>())?;
-    let consumed = <&[u8; mem::size_of::<u32>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
+    let consumed =
+        <&[u8; mem::size_of::<u32>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
     let value = u32::from_be_bytes(*consumed);
     Ok((buf, value))
 }
@@ -147,7 +154,8 @@ pub fn unmarshal_u32(buf: &[u8]) -> Result<(&[u8], u32), TpmErr> {
 #[allow(unused)]
 pub fn unmarshal_i32(buf: &[u8]) -> Result<(&[u8], i32), TpmErr> {
     let (consumed, buf) = split_slice_at(buf, mem::size_of::<i32>())?;
-    let consumed = <&[u8; mem::size_of::<i32>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
+    let consumed =
+        <&[u8; mem::size_of::<i32>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
     let value = i32::from_be_bytes(*consumed);
     Ok((buf, value))
 }
@@ -155,7 +163,8 @@ pub fn unmarshal_i32(buf: &[u8]) -> Result<(&[u8], i32), TpmErr> {
 #[allow(unused)]
 pub fn unmarshal_u64(buf: &[u8]) -> Result<(&[u8], u64), TpmErr> {
     let (consumed, buf) = split_slice_at(buf, mem::size_of::<u64>())?;
-    let consumed = <&[u8; mem::size_of::<u64>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
+    let consumed =
+        <&[u8; mem::size_of::<u64>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
     let value = u64::from_be_bytes(*consumed);
     Ok((buf, value))
 }
@@ -163,7 +172,8 @@ pub fn unmarshal_u64(buf: &[u8]) -> Result<(&[u8], u64), TpmErr> {
 #[allow(unused)]
 pub fn unmarshal_i64(buf: &[u8]) -> Result<(&[u8], i64), TpmErr> {
     let (consumed, buf) = split_slice_at(buf, mem::size_of::<i64>())?;
-    let consumed = <&[u8; mem::size_of::<i64>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
+    let consumed =
+        <&[u8; mem::size_of::<i64>()]>::try_from(consumed).map_err(|_| TpmErr::InternalErr)?;
     let value = i64::from_be_bytes(*consumed);
     Ok((buf, value))
 }
@@ -171,7 +181,8 @@ pub fn unmarshal_i64(buf: &[u8]) -> Result<(&[u8], i64), TpmErr> {
 #[allow(unused)]
 pub fn marshal_u8(buf: &mut [u8], value: u8) -> Result<&mut [u8], TpmErr> {
     let (produced, buf) = split_slice_at_mut(buf, mem::size_of::<u8>())?;
-    let produced = <&mut [u8; mem::size_of::<u8>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
+    let produced =
+        <&mut [u8; mem::size_of::<u8>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
     *produced = value.to_be_bytes();
     Ok(buf)
 }
@@ -179,7 +190,8 @@ pub fn marshal_u8(buf: &mut [u8], value: u8) -> Result<&mut [u8], TpmErr> {
 #[allow(unused)]
 pub fn marshal_i8(buf: &mut [u8], value: i8) -> Result<&mut [u8], TpmErr> {
     let (produced, buf) = split_slice_at_mut(buf, mem::size_of::<i8>())?;
-    let produced = <&mut [u8; mem::size_of::<i8>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
+    let produced =
+        <&mut [u8; mem::size_of::<i8>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
     *produced = value.to_be_bytes();
     Ok(buf)
 }
@@ -187,7 +199,8 @@ pub fn marshal_i8(buf: &mut [u8], value: i8) -> Result<&mut [u8], TpmErr> {
 #[allow(unused)]
 pub fn marshal_u16(buf: &mut [u8], value: u16) -> Result<&mut [u8], TpmErr> {
     let (produced, buf) = split_slice_at_mut(buf, mem::size_of::<u16>())?;
-    let produced = <&mut [u8; mem::size_of::<u16>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
+    let produced =
+        <&mut [u8; mem::size_of::<u16>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
     *produced = value.to_be_bytes();
     Ok(buf)
 }
@@ -195,7 +208,8 @@ pub fn marshal_u16(buf: &mut [u8], value: u16) -> Result<&mut [u8], TpmErr> {
 #[allow(unused)]
 pub fn marshal_i16(buf: &mut [u8], value: i16) -> Result<&mut [u8], TpmErr> {
     let (produced, buf) = split_slice_at_mut(buf, mem::size_of::<i16>())?;
-    let produced = <&mut [u8; mem::size_of::<i16>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
+    let produced =
+        <&mut [u8; mem::size_of::<i16>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
     *produced = value.to_be_bytes();
     Ok(buf)
 }
@@ -203,7 +217,8 @@ pub fn marshal_i16(buf: &mut [u8], value: i16) -> Result<&mut [u8], TpmErr> {
 #[allow(unused)]
 pub fn marshal_u32(buf: &mut [u8], value: u32) -> Result<&mut [u8], TpmErr> {
     let (produced, buf) = split_slice_at_mut(buf, mem::size_of::<u32>())?;
-    let produced = <&mut [u8; mem::size_of::<u32>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
+    let produced =
+        <&mut [u8; mem::size_of::<u32>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
     *produced = value.to_be_bytes();
     Ok(buf)
 }
@@ -211,7 +226,8 @@ pub fn marshal_u32(buf: &mut [u8], value: u32) -> Result<&mut [u8], TpmErr> {
 #[allow(unused)]
 pub fn marshal_i32(buf: &mut [u8], value: i32) -> Result<&mut [u8], TpmErr> {
     let (produced, buf) = split_slice_at_mut(buf, mem::size_of::<i32>())?;
-    let produced = <&mut [u8; mem::size_of::<i32>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
+    let produced =
+        <&mut [u8; mem::size_of::<i32>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
     *produced = value.to_be_bytes();
     Ok(buf)
 }
@@ -219,7 +235,8 @@ pub fn marshal_i32(buf: &mut [u8], value: i32) -> Result<&mut [u8], TpmErr> {
 #[allow(unused)]
 pub fn marshal_u64(buf: &mut [u8], value: u64) -> Result<&mut [u8], TpmErr> {
     let (produced, buf) = split_slice_at_mut(buf, mem::size_of::<u64>())?;
-    let produced = <&mut [u8; mem::size_of::<u64>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
+    let produced =
+        <&mut [u8; mem::size_of::<u64>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
     *produced = value.to_be_bytes();
     Ok(buf)
 }
@@ -227,7 +244,8 @@ pub fn marshal_u64(buf: &mut [u8], value: u64) -> Result<&mut [u8], TpmErr> {
 #[allow(unused)]
 pub fn marshal_i64(buf: &mut [u8], value: i64) -> Result<&mut [u8], TpmErr> {
     let (produced, buf) = split_slice_at_mut(buf, mem::size_of::<i64>())?;
-    let produced = <&mut [u8; mem::size_of::<i64>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
+    let produced =
+        <&mut [u8; mem::size_of::<i64>()]>::try_from(produced).map_err(|_| TpmErr::InternalErr)?;
     *produced = value.to_be_bytes();
     Ok(buf)
 }
@@ -240,7 +258,25 @@ fn marshal_bytes<'a>(buf: &'a mut [u8], src: &[u8]) -> Result<&'a mut [u8], TpmE
 }
 
 // TCG Algorithm Registry, page 11, table 3, TPM_ALG_ID constants
-#[cfg(any(feature = "aes", feature = "camellia", feature = "cbc", feature = "cfb", feature = "ctr", feature = "ecb", feature = "ofb", feature = "sha1", feature = "sha256", feature = "sha384", feature = "sha3_256", feature = "sha3_384", feature = "sha3_512", feature = "sha512", feature = "sm3_256", feature = "sm4", feature = "tdes"))]
+#[cfg(any(
+    feature = "aes",
+    feature = "camellia",
+    feature = "cbc",
+    feature = "cfb",
+    feature = "ctr",
+    feature = "ecb",
+    feature = "ofb",
+    feature = "sha1",
+    feature = "sha256",
+    feature = "sha384",
+    feature = "sha3_256",
+    feature = "sha3_384",
+    feature = "sha3_512",
+    feature = "sha512",
+    feature = "sm3_256",
+    feature = "sm4",
+    feature = "tdes"
+))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u16)]
 enum TpmAlgId {
@@ -347,7 +383,7 @@ impl convert::TryFrom<u16> for TpmEccCurve {
             value if value == Self::Curve448 as u16 => Self::Curve448,
             _ => {
                 return Err(TpmErr::Rc(TpmRc::CURVE));
-            },
+            }
         };
 
         Ok(result)
@@ -356,8 +392,7 @@ impl convert::TryFrom<u16> for TpmEccCurve {
 
 // TCG TPM2 Library, Part 2 -- Structures, page 54, table 16, TPM_RC constants
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct TpmRc {
-}
+pub struct TpmRc {}
 
 impl TpmRc {
     pub const SUCCESS: u32 = 0x0u32;
@@ -544,7 +579,7 @@ impl convert::TryFrom<u16> for TpmiAlgHash {
             value if value == Self::Sha3_512 as u16 => Self::Sha3_512,
             _ => {
                 return Err(TpmErr::Rc(TpmRc::HASH));
-            },
+            }
         };
 
         Ok(result)
@@ -596,7 +631,7 @@ impl convert::TryFrom<u16> for TpmiAlgSymObject {
             value if value == Self::Camellia as u16 => Self::Camellia,
             _ => {
                 return Err(TpmErr::Rc(TpmRc::SYMMETRIC));
-            },
+            }
         };
 
         Ok(result)
@@ -646,7 +681,7 @@ impl convert::TryFrom<u16> for TpmiAlgCipherMode {
             value if value == Self::Ecb as u16 => Self::Ecb,
             _ => {
                 return Err(TpmErr::Rc(TpmRc::MODE));
-            },
+            }
         };
 
         Ok(result)

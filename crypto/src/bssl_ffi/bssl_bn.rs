@@ -5,8 +5,8 @@
 //! BoringSSL FFI BIGNUM bindings.
 
 use super::error::bssl_get_error;
-use crate::utils_common::alloc::try_alloc_zeroizing_vec;
 use crate::CryptoError;
+use crate::utils_common::alloc::try_alloc_zeroizing_vec;
 use cmpa::MpMutUInt as _;
 use core::{convert, ptr};
 
@@ -66,7 +66,7 @@ impl BsslBn {
         if bytes_len < self.len()? {
             return Err(CryptoError::Internal);
         } else if bytes_len == 0 {
-            return Ok(())
+            return Ok(());
         }
 
         if unsafe { bssl_bare_sys::BN_bn2bin_padded(bytes.as_mut_ptr(), bytes_len, self.bn) } < 0 {

@@ -15,10 +15,10 @@ extern crate alloc;
 use alloc::boxed::Box;
 
 use super::error::bssl_get_error;
-use crate::symcipher::{self, transform_next_blocks, transform_next_blocks_in_place, SymBlockCipherAlg};
+use crate::symcipher::{self, SymBlockCipherAlg, transform_next_blocks, transform_next_blocks_in_place};
 use crate::{
-    io_slices::{CryptoPeekableIoSlicesMutIter, CryptoWalkableIoSlicesIter, CryptoWalkableIoSlicesMutIter},
     CryptoError,
+    io_slices::{CryptoPeekableIoSlicesMutIter, CryptoWalkableIoSlicesIter, CryptoWalkableIoSlicesMutIter},
 };
 use crate::{
     tpm2_interface,
