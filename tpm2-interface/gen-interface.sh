@@ -13,6 +13,8 @@ gen-tpm2-cmd-interface \
     -d TPM2B_PRIVATE_KEY_RSA \
     -d TPM_ECC_CURVE \
     -d TPMS_ECC_POINT \
+    -m TPMS_ECC_POINT \
+    -u TPMS_ECC_POINT \
     -d TPM2B_ECC_PARAMETER \
     -d TPMI_ALG_SYM_OBJECT \
     -d TPMI_ALG_CIPHER_MODE \

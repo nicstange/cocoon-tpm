@@ -89,6 +89,91 @@ impl<'a> PartialEq for TpmBuffer<'a> {
 }
 
 #[allow(unused)]
+pub fn box_try_new<T>(v: T) -> Result<Box<T>, ()> {
+    // Box::try_new() is unstable, so do it by ourselves for now.
+    // Refer to https://doc.rust-lang.org/std/boxed/index.html#memory-layout.
+    let p: *mut T = if mem::size_of::<T>() == 0 {
+        // Dangling pointers are valid for ZSTs and the write below is Ok.
+        ptr::NonNull::dangling().as_ptr()
+    } else {
+        let layout = alloc::alloc::Layout::new::<T>();
+        let p: *mut T = unsafe { alloc::alloc::alloc(layout) } as *mut T;
+        if p.is_null() {
+            return Err(());
+        }
+        p
+    };
+
+    unsafe { p.write(v) };
+
+    Ok(unsafe { Box::from_raw(p) })
+}
+
+#[derive(Clone, Debug)]
+pub struct TpmLimits {
+}
+impl TpmLimits {
+    #[cfg(feature = "ecc")]
+    fn max_ecc_key_bytes(&self) -> Result<u16, ()> {
+        let mut max_ecc_key_bits: u16 = 0;
+        #[cfg(feature = "ecc_nist_p192")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(192);
+        }
+        #[cfg(feature = "ecc_nist_p224")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(224);
+        }
+        #[cfg(feature = "ecc_nist_p256")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(256);
+        }
+        #[cfg(feature = "ecc_nist_p384")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(384);
+        }
+        #[cfg(feature = "ecc_nist_p521")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(521);
+        }
+        #[cfg(feature = "ecc_bn_p256")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(256);
+        }
+        #[cfg(feature = "ecc_bn_p638")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(638);
+        }
+        #[cfg(feature = "ecc_sm2_p256")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(256);
+        }
+        #[cfg(feature = "ecc_bp_p256_r1")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(256);
+        }
+        #[cfg(feature = "ecc_bp_p384_r1")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(384);
+        }
+        #[cfg(feature = "ecc_bp_p512_r1")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(512);
+        }
+        #[cfg(feature = "ecc_curve_25519")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(256);
+        }
+        #[cfg(feature = "ecc_curve_448")]
+        {
+            max_ecc_key_bits = max_ecc_key_bits.max(448);
+        }
+
+        Ok(max_ecc_key_bits.checked_add(7).ok_or(())? / 8)
+    }
+}
+
+#[allow(unused)]
 fn split_slice_at<T>(s: &[T], mid: usize) -> Result<(&[T], &[T]), TpmErr> {
     if s.len() < mid {
         return Err(TpmErr::Rc(TpmRc::INSUFFICIENT));
@@ -793,10 +878,160 @@ pub struct Tpm2bEccParameter<'a> {
     pub buffer: TpmBuffer<'a>,
 }
 
+impl<'a> Tpm2bEccParameter<'a> {
+    #[cfg(feature = "ecc")]
+    fn marshalled_size(&self) -> Result<usize, ()> {
+        let mut size: usize = 0;
+
+        let size_size = mem::size_of::<u16>();
+        size = match size.checked_add(size_size) {
+            Some(size) => size,
+            None => {
+                return Err(());
+            },
+        };
+
+        let buffer_size = self.buffer.len();
+        size = match size.checked_add(buffer_size) {
+            Some(size) => size,
+            None => {
+                return Err(());
+            },
+        };
+
+        Ok(size)
+    }
+
+    #[cfg(feature = "ecc")]
+    fn marshal<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], TpmErr> {
+        let marshalled_size = match u16::try_from(self.buffer.len()) {
+            Ok(marshalled_size) => marshalled_size,
+            Err(_) => {
+                return Err(TpmErr::Rc(TpmRc::SIZE));
+            },
+        };
+        let buf = marshal_u16(buf, marshalled_size)?;
+
+        let buf = marshal_bytes(buf, &self.buffer)?;
+
+        Ok(buf)
+    }
+
+    #[cfg(feature = "ecc")]
+    fn unmarshal_intern(buf: &'a [u8], limits: &TpmLimits) -> Result<(&'a [u8], Self), TpmErr> {
+        let (buf, unmarshalled_size) = match unmarshal_u16(buf) {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(e);
+            },
+        };
+
+        let buffer_size: u16 = unmarshalled_size;
+        let v0 = match limits.max_ecc_key_bytes() {
+            Ok(v) => v,
+            Err(_) => {
+                debug_assert!(false, "Unexpected runtime constant evaluation failure");
+                return Err(TpmErr::InternalErr);
+            },
+        };
+        if buffer_size > v0 {
+            return Err(TpmErr::Rc(TpmRc::SIZE));
+        }
+        let buffer_size = match usize::try_from(buffer_size) {
+            Ok(buffer_size) => buffer_size,
+            Err(_) => {
+                return Err(TpmErr::Rc(TpmRc::INSUFFICIENT));
+            },
+        };
+        let (unmarshalled_buffer, buf) = match split_slice_at(buf, buffer_size) {
+            Ok((unmarshalled_buffer, buf)) => (unmarshalled_buffer, buf),
+            Err(e) => {
+                return Err(e);
+            },
+        };
+        let unmarshalled_buffer = TpmBuffer::from(unmarshalled_buffer);
+
+        Ok((buf, Self{buffer: unmarshalled_buffer}))
+    }
+}
+
 // TCG TPM2 Library, Part 2 -- Structures, page 150, table 178, TPMS_ECC_POINT structure
 #[cfg(feature = "ecc")]
 #[derive(Debug, PartialEq)]
 pub struct TpmsEccPoint<'a> {
     pub x: Tpm2bEccParameter<'a>,
     pub y: Tpm2bEccParameter<'a>,
+}
+
+#[cfg(feature = "ecc")]
+impl<'a> TpmsEccPoint<'a> {
+    pub fn marshalled_size(&self) -> Result<usize, ()> {
+        let mut size: usize = 0;
+
+        let x_size = match self.x.marshalled_size() {
+            Ok(x_size) => x_size,
+            Err(_) => {
+                return Err(());
+            },
+        };
+        size = match size.checked_add(x_size) {
+            Some(size) => size,
+            None => {
+                return Err(());
+            },
+        };
+
+        let y_size = match self.y.marshalled_size() {
+            Ok(y_size) => y_size,
+            Err(_) => {
+                return Err(());
+            },
+        };
+        size = match size.checked_add(y_size) {
+            Some(size) => size,
+            None => {
+                return Err(());
+            },
+        };
+
+        Ok(size)
+    }
+
+    pub fn marshal<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], TpmErr> {
+        let buf = self.x.marshal(buf)?;
+
+        let buf = self.y.marshal(buf)?;
+
+        Ok(buf)
+    }
+
+    fn unmarshal_intern(buf: &'a [u8], limits: &TpmLimits) -> Result<(&'a [u8], Self), TpmErr> {
+        let (buf, unmarshalled_x) = match Tpm2bEccParameter::<'_>::unmarshal_intern(buf, limits) {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(e);
+            },
+        };
+
+        let (buf, unmarshalled_y) = match Tpm2bEccParameter::<'_>::unmarshal_intern(buf, limits) {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(e);
+            },
+        };
+
+        Ok((buf, Self{x: unmarshalled_x, y: unmarshalled_y}))
+    }
+
+    pub fn unmarshal(buf: &'a [u8], limits: &TpmLimits) -> Result<(&'a [u8], Box<Self>), TpmErr> {
+        let (buf, unmarshalled) = Self::unmarshal_intern(buf, limits)?;
+        let unmarshalled: Box<Self> = match box_try_new(unmarshalled) {
+            Ok(unmarshalled) => unmarshalled,
+            Err(_) => {
+                return Err(TpmErr::Rc(TpmRc::MEMORY));
+            },
+        };
+
+        Ok((buf, unmarshalled))
+    }
 }
