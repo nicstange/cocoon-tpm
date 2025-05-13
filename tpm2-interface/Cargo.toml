@@ -70,5 +70,13 @@ ecc_curve_448 = ["ecc"]
 ecc_curve_25519 = ["ecc"]
 ecc_sm2_p256 = ["ecc"]
 
+# Serialization
+serde = ["dep:hex", "dep:serde"]
+
 [dependencies]
+hex = { version = "0.4.3", optional = true, default-features = false, features = ["alloc"] }
+serde = { version = "1.0.219", optional = true, default-features = false, features = ["alloc"] }
 zeroize = { version = "1.8.1", optional = true, default-features = false, features= ["alloc"] }
+
+[dev-dependencies]
+serde_json = { version = "1.0.140", default-features = false, features = ["alloc"] }

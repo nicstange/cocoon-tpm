@@ -5,6 +5,8 @@
 #![allow(clippy::identity_op)]
 
 extern crate alloc;
+#[cfg(feature = "serde")]
+use alloc::string::String;
 use alloc::{boxed, vec};
 
 #[allow(unused_imports)]
@@ -12,12 +14,21 @@ use boxed::Box;
 #[allow(unused_imports)]
 use core::cmp;
 use core::convert;
+#[cfg(feature = "serde")]
+use core::fmt;
 use core::mem;
 use core::ops;
 #[allow(unused_imports)]
 use core::ptr;
+use core::result::Result;
 #[allow(unused_imports)]
 use vec::Vec;
+
+#[cfg(feature = "serde")]
+use serde::{
+    Deserialize, Deserializer, Serialize, Serializer,
+    de::{self, SeqAccess, Visitor},
+};
 
 #[derive(Clone, Copy, Debug)]
 pub enum TpmErr {
@@ -38,6 +49,37 @@ fn copy_vec_from_slice<T: Copy>(slice: &[T]) -> Result<Vec<T>, TpmErr> {
 pub enum TpmBuffer<'a> {
     Borrowed(&'a [u8]),
     Owned(Vec<u8>),
+}
+
+#[cfg(feature = "serde")]
+impl<'de: 'a, 'a> Deserialize<'de> for TpmBuffer<'a> {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let hexstr = String::deserialize(d)?;
+
+        let Ok(bytes) = hex::decode(&hexstr) else {
+            return Err(de::Error::custom("unable to convert hex string to bytes"));
+        };
+
+        Ok(Self::Owned(bytes))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'a> Serialize for TpmBuffer<'a> {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let buf = match self {
+            Self::Borrowed(slice) => slice,
+            Self::Owned(vec) => vec.as_slice(),
+        };
+
+        s.serialize_str(&hex::encode(buf))
+    }
 }
 
 impl<'a> TpmBuffer<'a> {
@@ -823,15 +865,104 @@ pub struct Tpm2bPrivateKeyRsa<'a> {
 }
 
 // TCG TPM2 Library, Part 2 -- Structures, page 150, table 177, TPM2B_ECC_PARAMETER structure
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Tpm2bEccParameter<'a> {
     pub buffer: TpmBuffer<'a>,
 }
 
+#[cfg(feature = "serde")]
+impl<'de: 'a, 'a> Deserialize<'de> for Tpm2bEccParameter<'a> {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let buffer = TpmBuffer::deserialize(d)?;
+
+        Ok(Self { buffer })
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'a> Serialize for Tpm2bEccParameter<'a> {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.buffer.serialize(s)
+    }
+}
+
 // TCG TPM2 Library, Part 2 -- Structures, page 150, table 178, TPMS_ECC_POINT structure
 #[cfg(feature = "ecc")]
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TpmsEccPoint<'a> {
     pub x: Tpm2bEccParameter<'a>,
     pub y: Tpm2bEccParameter<'a>,
+}
+
+#[cfg(feature = "serde")]
+impl<'de: 'a, 'a> Deserialize<'de> for TpmsEccPoint<'a> {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct EccPointVisitor;
+
+        impl<'de> Visitor<'de> for EccPointVisitor {
+            type Value = TpmsEccPoint<'de>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct EccPoint")
+            }
+
+            fn visit_seq<V>(self, mut seq: V) -> Result<Self::Value, V::Error>
+            where
+                V: SeqAccess<'de>,
+            {
+                let x = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+
+                let y = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+
+                Ok(TpmsEccPoint { x, y })
+            }
+        }
+
+        d.deserialize_seq(EccPointVisitor)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'a> Serialize for TpmsEccPoint<'a> {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        (self.x.clone(), self.y.clone()).serialize(s)
+    }
+}
+
+mod tests {
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_tpm_ecc_point() {
+        use super::{super::*, vec};
+
+        let point = TpmsEccPoint {
+            x: Tpm2bEccParameter {
+                buffer: TpmBuffer::Owned(vec![1, 2, 3]),
+            },
+            y: Tpm2bEccParameter {
+                buffer: TpmBuffer::Owned(vec![4, 5, 6]),
+            },
+        };
+
+        let ser = serde_json::to_string(&point).unwrap();
+        let de: TpmsEccPoint = serde_json::from_str(&ser).unwrap();
+
+        assert_eq!(point, de);
+    }
 }
