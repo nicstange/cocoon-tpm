@@ -8,7 +8,7 @@
 //! [`VariableChunkOutputKdf`], which implements [`RngCore`](rng::RngCore)
 //! commonly expected by those.
 
-// Lifetimes are not obvious at first sight here, make the explicit.
+// Lifetimes are not obvious at first sight here, make them explicit.
 #![allow(clippy::needless_lifetimes)]
 
 extern crate alloc;
@@ -61,8 +61,8 @@ pub trait Kdf {
 /// Common interface to key derivation function implementations capable of
 /// serving multiple requests from a single instance.
 ///
-/// A [`RngCore`](rng::RngCore) implementation is provided for implementators of
-/// `VariableChunkOutputKdf` so that these can seaminglessly serve as the
+/// A [`RngCore`](rng::RngCore) implementation is provided for implementors of
+/// `VariableChunkOutputKdf` so that these can seamlessly serve as the
 /// randomness source for any key generation primitives (which would then
 /// become key derivation primitives, strictly speaking).
 pub trait VariableChunkOutputKdf {
@@ -102,7 +102,7 @@ impl<VK: VariableChunkOutputKdf> Kdf for VK {
     }
 }
 
-/// Convenience implementation helper trait definining an interface to KDF
+/// Convenience implementation helper trait defining an interface to KDF
 /// implementations operating on units of a fixed block length.
 ///
 /// Implementations of this trait get wrapped in a `BufferedFixedBlockOutputKdf`
@@ -123,7 +123,7 @@ pub trait FixedBlockOutputKdf: Sized {
     ///   to write the generated key block to.
     fn generate_block(&mut self, output: &mut [u8]) -> Result<usize, CryptoError>;
 
-    /// Serve aribtrarily sized key generation request, buffering any generated
+    /// Serve arbitrarily sized key generation request, buffering any generated
     /// excess bytes away for future use.
     ///
     /// Default implementation used internally by
@@ -198,9 +198,9 @@ pub trait FixedBlockOutputKdf: Sized {
         Ok(block_buf_remaining_len)
     }
 
-    /// Serve aribtrarily sized requests to xor generated key material into
+    /// Serve arbitrarily sized requests to xor generated key material into
     /// preexisting data, buffering any generated excess bytes away for
-    /// futre use.
+    /// future use.
     ///
     /// Default implementation used internally by
     /// [`BufferedFixedBlockOutputKdf::generate_and_xor_chunk()`](BufferedFixedBlockOutputKdf::generate_and_xor_chunk).
@@ -272,7 +272,7 @@ impl<BK: FixedBlockOutputKdf> BufferedFixedBlockOutputKdf<BK> {
     /// Wrap a [`FixedBlockOutputKdf`] instance to implement
     /// [`VariableChunkOutputKdf`] for.
     ///
-    /// # Arguments;
+    /// # Arguments:
     ///
     /// * `block_kdf` - The [`FixedBlockOutputKdf`] instance to wrap.
     pub fn new(block_kdf: BK) -> Result<Self, CryptoError> {

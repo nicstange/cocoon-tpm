@@ -139,13 +139,13 @@ impl<'a> FixedBlockOutputKdf for TcgTpm2KdfE<'a> {
         let first_octet_clear_mask = self.first_octet_clear_mask();
         self.n_blocks_generated += 1;
         let counter_buf = self.n_blocks_generated.to_be_bytes();
-        let usage_null_termintator = [0u8; 1];
+        let usage_null_terminator = [0u8; 1];
         hash_instance.update(
             io_slices::BuffersSliceIoSlicesIter::new(&[
                 counter_buf.as_slice(),
                 self.z,
                 self.usage.as_bytes(),
-                &usage_null_termintator,
+                &usage_null_terminator,
                 self.party_u_info,
                 self.party_v_info,
             ])
