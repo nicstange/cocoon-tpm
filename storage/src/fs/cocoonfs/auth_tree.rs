@@ -4344,13 +4344,6 @@ impl<B: blkdev::NvBlkDev> AuthTreeApplyUpdatesFuture<B> {
                         break Ok(());
                     }
 
-                    if node_data_buf.is_empty() {
-                        *node_data_buf = match FixedVec::new_with_default(tree.config.node_size()) {
-                            Ok(node_data_buf) => node_data_buf,
-                            Err(e) => break Err(NvFsError::from(e)),
-                        };
-                    }
-
                     let cur_pending_node_updates =
                         &this.pending_nodes_updates.nodes_updates[this.cur_pending_nodes_updates_index];
                     let (digest_entry_len, digest_entries_in_node_log2) = if cur_pending_node_updates.node_id.level > 0
@@ -4365,7 +4358,18 @@ impl<B: blkdev::NvBlkDev> AuthTreeApplyUpdatesFuture<B> {
                             tree.config.data_digests_per_node_log2,
                         )
                     };
-                    debug_assert!(node_data_buf.len() >= digest_entry_len << digest_entries_in_node_log2);
+
+                    if node_data_buf.is_empty() {
+                        *node_data_buf = match FixedVec::new_with_default(tree.config.node_size()) {
+                            Ok(node_data_buf) => node_data_buf,
+                            Err(e) => break Err(NvFsError::from(e)),
+                        };
+                    } else {
+                        // The node_data_buf got recycled. Zeroize the tail -- the tail lengths
+                        // might be different between internal and leaf nodes.
+                        debug_assert!(node_data_buf.len() >= digest_entry_len << digest_entries_in_node_log2);
+                        node_data_buf[digest_entry_len << digest_entries_in_node_log2..].fill(0);
+                    }
 
                     if let Some(failed_node_write) = this
                         .failed_nodes_writes
