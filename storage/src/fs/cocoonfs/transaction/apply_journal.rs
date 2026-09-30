@@ -164,6 +164,17 @@ impl<B: blkdev::NvBlkDev> TransactionApplyJournalFuture<B> {
                         break (Some(transaction), NvFsError::IoError(crate::fs::NvFsIoError::IoFailure));
                     }
 
+                    if transaction.is_applied {
+                        // This is a retry, and a prior attempt to invalidate the journal log failed.
+                        // Do not write out the data updates again while the journal log is in an
+                        // indeterminate state -- if effectively invalidated on storage, and
+                        // the data update write-out fails, the image can get corrupted.
+                        this.fut_state = TransactionApplyJournalFutureState::InvalidateJournalLogPrepare {
+                            transaction: Some(transaction),
+                        };
+                        continue;
+                    }
+
                     // Apply changes to the allocation bitmap.
                     // After that, the pending_allocs/pending_frees will only be used
                     // for trimming at cleanup.
@@ -370,6 +381,8 @@ impl<B: blkdev::NvBlkDev> TransactionApplyJournalFuture<B> {
                         task::Poll::Ready(Err(e)) => break (None, e),
                         task::Poll::Pending => return task::Poll::Pending,
                     };
+
+                    transaction.is_applied = true;
 
                     // Now that the data updates have been written, which might potentially have
                     // taken advantage of any data cached at the transactions' Allocation Block

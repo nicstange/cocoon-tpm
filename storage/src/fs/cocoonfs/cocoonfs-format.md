@@ -859,7 +859,9 @@ always contains the first [device IO Block](#def-dev-io-block)). In general, the
 can be in any state. Note that in practice however, hardware typically exhibits either of two behaviors, sometimes
 implemented only as a "best-effort" guarantee: the data is either all-old or all-new, or alternatively, there's a pivot
 point somewhere within the [device IO Block](#def-dev-io-block) partitioning it into an all-old and an all-new region
-each. Observe that the former behavior is a special case of the latter.
+each. Observe that the former behavior is a special case of the latter. Some devices implement erase-then-write
+behavior, where the erased data reads back as all-zeros. For the purpose of the discussion here, this is considered
+an implementation of the "old-new" model, with "old" being the state after the erase, and is supported.
 
 Two complementary integrity protection mechanisms are applied to the first [filesystem IO Block](#def-io-block):
 
