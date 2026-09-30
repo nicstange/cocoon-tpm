@@ -572,21 +572,56 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> TransactionWriteJournalFutu
                         task::Poll::Pending => return task::Poll::Pending,
                     };
 
-                    // Note: this might write out the unmodified mutable image header region, which
-                    // will get updated and rewritten later again, namely if the mutable image
-                    // header's end does not align with the IO block size and there are some
-                    // unrelated data modification to the remainder. However, this is expected to
-                    // happen rarely and probably not worth any extra logic
+                    // Skip the IO Block containing the mutable image header here: it will get
+                    // written in full by the WriteHeaderUpdates step further below anyway, once
+                    // the updated header has been encoded into it. Writing it out at this point
+                    // already would emit its journal staging copy twice, the first time with the
+                    // stale header contents, whenever some other Allocation Block in the header's
+                    // IO Block has been modified (the common case: allocations start right after
+                    // the header).
                     let all_update_states_index_range = AuthTreeDataBlocksUpdateStatesIndexRange::new(
                         AuthTreeDataBlocksUpdateStatesIndex::from(0),
                         AuthTreeDataBlocksUpdateStatesIndex::from(
                             transaction.auth_tree_data_blocks_update_states.len(),
                         ),
                     );
+                    let all_update_states_allocation_blocks_index_range =
+                        AuthTreeDataBlocksUpdateStatesAllocationBlocksIndexRange::from(all_update_states_index_range);
                     let fs_instance = fs_instance_sync_state.get_fs_ref();
+                    let fs_config = &fs_instance.fs_config;
+                    let image_layout = &fs_config.image_layout;
+                    let salt_len = match u8::try_from(fs_config.salt.len()) {
+                        Ok(salt_len) => salt_len,
+                        Err(_) => {
+                            break (
+                                false,
+                                Some(transaction),
+                                NvFsError::from(FormatError::InvalidSaltLength),
+                            );
+                        }
+                    };
+                    let mutable_image_header_region =
+                        match image_header::MutableImageHeader::physical_location(image_layout, salt_len)
+                            .align(image_layout.io_block_allocation_blocks_log2 as u32)
+                        {
+                            Some(mutable_image_header_region) => mutable_image_header_region,
+                            None => break (false, Some(transaction), nvfs_err_internal!()),
+                        };
+                    let write_update_states_allocation_blocks_index_range = match transaction
+                        .auth_tree_data_blocks_update_states
+                        .lookup_allocation_blocks_update_states_index_range(&mutable_image_header_region)
+                    {
+                        Ok(mutable_image_header_update_states_allocation_blocks_index_range) => {
+                            AuthTreeDataBlocksUpdateStatesAllocationBlocksIndexRange::new(
+                                mutable_image_header_update_states_allocation_blocks_index_range.end(),
+                                all_update_states_allocation_blocks_index_range.end(),
+                            )
+                        }
+                        Err(_) => all_update_states_allocation_blocks_index_range,
+                    };
                     let write_dirty_data_fut = match TransactionWriteDirtyDataFuture::new(
                         transaction,
-                        &AuthTreeDataBlocksUpdateStatesAllocationBlocksIndexRange::from(all_update_states_index_range),
+                        &write_update_states_allocation_blocks_index_range,
                         fs_instance.fs_config.image_layout.io_block_allocation_blocks_log2,
                     ) {
                         Ok(write_dirty_data_fut) => write_dirty_data_fut,
