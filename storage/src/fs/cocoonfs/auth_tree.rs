@@ -6473,6 +6473,9 @@ impl AuthTreeReplayJournalUpdateScriptCursor {
         physical_allocation_block_index: layout::PhysicalAllocBlockIndex,
         allocation_block_data: &[u8],
     ) -> Result<AuthTreeReplayJournalUpdateScriptCursorUpdateResult<B>, NvFsError> {
+        if self.cur_data_allocation_block_index >= self.cur_contiguous_data_allocation_blocks_range_end {
+            self.update_physical_position(tree_config)?;
+        }
         // If the Allocation Block is before the current physical position,
         // then it's been skipped over by advance_to(), because it's not covered by a
         // JournalUpdateAuthDigestsScriptEntry.
@@ -6483,10 +6486,6 @@ impl AuthTreeReplayJournalUpdateScriptCursor {
             physical_allocation_block_index,
             self.cur_physical_allocation_block_index
         );
-
-        if self.cur_data_allocation_block_index >= self.cur_contiguous_data_allocation_blocks_range_end {
-            self.update_physical_position(tree_config)?;
-        }
         if self.cur_physical_allocation_block_index >= layout::PhysicalAllocBlockIndex::from(0u64) + self.image_size {
             return Err(nvfs_err_internal!());
         }
@@ -6664,7 +6663,7 @@ impl AuthTreeReplayJournalUpdateScriptCursor {
             Some((cur_contiguous_data_allocation_blocks_range, cur_physical_allocation_block_index)) => {
                 // The cur_physical_allocation_block_index only ever gets moved in the forward
                 // direction. More specifically whenever crossing an
-                // Authentication Tree extent, that extent's length gets added.
+                // authentication tree extent, that extent's length gets added.
                 debug_assert!(cur_physical_allocation_block_index >= self.cur_physical_allocation_block_index);
                 if cur_physical_allocation_block_index
                     <= layout::PhysicalAllocBlockIndex::from(0u64) + self.aligned_image_size
@@ -6672,6 +6671,19 @@ impl AuthTreeReplayJournalUpdateScriptCursor {
                     self.cur_physical_allocation_block_index = cur_physical_allocation_block_index;
                     self.cur_contiguous_data_allocation_blocks_range_end =
                         cur_contiguous_data_allocation_blocks_range.end();
+
+                    // Advance the update script position to avoid infinite loops on malformed
+                    // images in case the update script's entry specifies a
+                    // location within an authentication tree's extent.
+                    while self.journal_update_script_index < self.journal_update_script.len()
+                        && self.journal_update_script[self.journal_update_script_index]
+                            .get_target_range()
+                            .end()
+                            <= cur_physical_allocation_block_index
+                    {
+                        self.journal_update_script_index += 1;
+                    }
+
                     Ok(())
                 } else {
                     Err(NvFsError::IoError(NvFsIoError::RegionOutOfRange))
