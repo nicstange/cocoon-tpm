@@ -581,45 +581,45 @@ impl AuthTreeDataAllocationBlocksMap {
         })
     }
 
-    /// Map a contiguous
-    /// [`PhysicalAllocBlockRange`](layout::PhysicalAllocBlockRange) into the
+    /// Map a
+    /// [`PhysicalAllocBlockIndex`](layout::PhysicalAllocBlockIndex) into the
     /// [Authentication Tree Data Block index
     /// domain](AuthTreeDataAllocBlockIndex).
     ///
+    /// `physical_allocation_block_index` must not be located within any of the
+    /// authentication tree's extents or an error would get returned.
+    ///
     /// # Arguments:
     ///
-    /// * `physical_range` - The
-    ///   [`PhysicalAllocBlockRange`](layout::PhysicalAllocBlockRange) to map.
-    ///   Must not overlap with any of the authentication tree nodes storage
-    ///   extents.
-    fn map_physical_to_data_allocation_blocks(
+    /// * `physical_allocation_block_index` - The physical location to map into
+    ///   the [Authentication Tree Data Block index
+    ///   domain](AuthTreeDataBlockIndex). Must not be within any of the
+    ///   authentication tree's extents.
+    fn translate_physical_to_data_allocation_block_index(
         &self,
-        physical_range: &layout::PhysicalAllocBlockRange,
-    ) -> AuthTreeDataAllocBlockRange {
+        physical_allocation_block_index: layout::PhysicalAllocBlockIndex,
+    ) -> Result<AuthTreeDataAllocBlockIndex, NvFsError> {
         // Convert the physical Allocation Block index to an Authentication Tree Data
         // one by subtracting from the former the space occupied by any
         // authentication tree nodes located before it in the image.
         let i = self
             .auth_tree_storage_physical_extents
-            .partition_point(|e| e.0 <= u64::from(physical_range.begin()));
+            .partition_point(|e| e.0 <= u64::from(physical_allocation_block_index));
         let auth_tree_storage_accumulated_block_count = if i != 0 {
             self.auth_tree_storage_physical_extents[i - 1].1
         } else {
             0
         };
-        // The physical allocation block range shall not intersect with any
-        // authentication tree nodes.
         if i < self.auth_tree_storage_physical_extents.len() {
             let next = self.auth_tree_storage_physical_extents[i];
             let next_begin = next.0 - (next.1 - auth_tree_storage_accumulated_block_count);
             let next_begin = layout::PhysicalAllocBlockIndex::from(next_begin);
-            debug_assert!(next_begin >= physical_range.end());
+            if next_begin <= physical_allocation_block_index {
+                return Err(NvFsError::from(FormatError::InvalidExtents));
+            }
         }
-        AuthTreeDataAllocBlockRange::from((
-            AuthTreeDataAllocBlockIndex::from(
-                u64::from(physical_range.begin()) - auth_tree_storage_accumulated_block_count,
-            ),
-            physical_range.block_count(),
+        Ok(AuthTreeDataAllocBlockIndex::from(
+            u64::from(physical_allocation_block_index) - auth_tree_storage_accumulated_block_count,
         ))
     }
 
@@ -863,47 +863,29 @@ fn test_auth_tree_data_allocation_blocks_map_from_phys() {
         .unwrap();
     let map = AuthTreeDataAllocationBlocksMap::new(&logical_auth_tree_extents).unwrap();
 
-    let auth_tree_data_range = map.map_physical_to_data_allocation_blocks(&layout::PhysicalAllocBlockRange::from((
-        layout::PhysicalAllocBlockIndex::from(0),
-        layout::AllocBlockCount::from(1),
-    )));
-    assert_eq!(u64::from(auth_tree_data_range.begin()), 0);
-    assert_eq!(u64::from(auth_tree_data_range.end()), 1);
+    let auth_tree_data_block_index =
+        map.translate_physical_to_data_allocation_block_index_safe(layout::PhysicalAllocBlockIndex::from(0));
+    assert_eq!(u64::from(auth_tree_data_block_index), 0);
 
-    let auth_tree_data_range = map.map_physical_to_data_allocation_blocks(&layout::PhysicalAllocBlockRange::from((
-        layout::PhysicalAllocBlockIndex::from(2),
-        layout::AllocBlockCount::from(1),
-    )));
-    assert_eq!(u64::from(auth_tree_data_range.begin()), 1);
-    assert_eq!(u64::from(auth_tree_data_range.end()), 2);
+    let auth_tree_data_block_index =
+        map.translate_physical_to_data_allocation_block_index_safe(layout::PhysicalAllocBlockIndex::from(2));
+    assert_eq!(u64::from(auth_tree_data_block_index), 1);
 
-    let auth_tree_data_range = map.map_physical_to_data_allocation_blocks(&layout::PhysicalAllocBlockRange::from((
-        layout::PhysicalAllocBlockIndex::from(3),
-        layout::AllocBlockCount::from(1),
-    )));
-    assert_eq!(u64::from(auth_tree_data_range.begin()), 2);
-    assert_eq!(u64::from(auth_tree_data_range.end()), 3);
+    let auth_tree_data_block_index =
+        map.translate_physical_to_data_allocation_block_index_safe(layout::PhysicalAllocBlockIndex::from(3));
+    assert_eq!(u64::from(auth_tree_data_block_index), 2);
 
-    let auth_tree_data_range = map.map_physical_to_data_allocation_blocks(&layout::PhysicalAllocBlockRange::from((
-        layout::PhysicalAllocBlockIndex::from(2),
-        layout::AllocBlockCount::from(2),
-    )));
-    assert_eq!(u64::from(auth_tree_data_range.begin()), 1);
-    assert_eq!(u64::from(auth_tree_data_range.end()), 3);
+    let auth_tree_data_block_index =
+        map.translate_physical_to_data_allocation_block_index_safe(layout::PhysicalAllocBlockIndex::from(2));
+    assert_eq!(u64::from(auth_tree_data_block_index), 1);
 
-    let auth_tree_data_range = map.map_physical_to_data_allocation_blocks(&layout::PhysicalAllocBlockRange::from((
-        layout::PhysicalAllocBlockIndex::from(5),
-        layout::AllocBlockCount::from(1),
-    )));
-    assert_eq!(u64::from(auth_tree_data_range.begin()), 3);
-    assert_eq!(u64::from(auth_tree_data_range.end()), 4);
+    let auth_tree_data_block_index =
+        map.translate_physical_to_data_allocation_block_index_safe(layout::PhysicalAllocBlockIndex::from(5));
+    assert_eq!(u64::from(auth_tree_data_block_index), 3);
 
-    let auth_tree_data_range = map.map_physical_to_data_allocation_blocks(&layout::PhysicalAllocBlockRange::from((
-        layout::PhysicalAllocBlockIndex::from(6),
-        layout::AllocBlockCount::from(1),
-    )));
-    assert_eq!(u64::from(auth_tree_data_range.begin()), 4);
-    assert_eq!(u64::from(auth_tree_data_range.end()), 5);
+    let auth_tree_data_block_index =
+        map.translate_physical_to_data_allocation_block_index_safe(layout::PhysicalAllocBlockIndex::from(6));
+    assert_eq!(u64::from(auth_tree_data_block_index), 4);
 }
 
 #[test]
@@ -1796,19 +1778,12 @@ impl AuthTreeConfig {
     pub fn translate_physical_to_data_block_index(
         &self,
         physical_allocation_block_index: layout::PhysicalAllocBlockIndex,
-    ) -> AuthTreeDataBlockIndex {
-        let physical_data_block_allocation_blocks_begin =
-            physical_allocation_block_index.align_down(self.data_block_allocation_blocks_log2 as u32);
-        let physical_data_block_allocation_blocks_range = layout::PhysicalAllocBlockRange::from((
-            physical_data_block_allocation_blocks_begin,
-            layout::AllocBlockCount::from(1u64 << self.data_block_allocation_blocks_log2),
-        ));
-        AuthTreeDataBlockIndex::new_from_data_allocation_block_index(
+    ) -> Result<AuthTreeDataBlockIndex, NvFsError> {
+        Ok(AuthTreeDataBlockIndex::new_from_data_allocation_block_index(
             self.auth_tree_data_allocation_blocks_map
-                .map_physical_to_data_allocation_blocks(&physical_data_block_allocation_blocks_range)
-                .begin(),
+                .translate_physical_to_data_allocation_block_index(physical_allocation_block_index)?,
             self.data_block_allocation_blocks_log2 as u32,
-        )
+        ))
     }
 
     /// Map a [`PhysicalAllocBlockIndex`](layout::PhysicalAllocBlockIndex) into
@@ -3803,13 +3778,22 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev, DUI: AuthTreeDataBlocksUpda
                         task::Poll::Pending => return task::Poll::Pending,
                     };
                     let tree_config = fs_instance_sync_state.auth_tree.get_config();
-                    let next_updated_data_block =
-                        next_updated_data_block.map(|next_updated_data_block| LogicalAuthTreeDataBlockUpdate {
-                            data_block_index: tree_config.translate_physical_to_data_block_index(
-                                next_updated_data_block.data_block_allocation_blocks_begin,
-                            ),
-                            data_block_digest: next_updated_data_block.data_block_digest,
-                        });
+                    let next_updated_data_block = match next_updated_data_block {
+                        Some(next_updated_data_block) => {
+                            let next_updated_data_block_index = match tree_config
+                                .translate_physical_to_data_block_index(
+                                    next_updated_data_block.data_block_allocation_blocks_begin,
+                                ) {
+                                Ok(next_updated_data_block_index) => next_updated_data_block_index,
+                                Err(e) => break Err((e, None)),
+                            };
+                            Some(LogicalAuthTreeDataBlockUpdate {
+                                data_block_index: next_updated_data_block_index,
+                                data_block_digest: next_updated_data_block.data_block_digest,
+                            })
+                        }
+                        None => None,
+                    };
                     this.fut_state = AuthTreePrepareUpdatesFutureState::AdvanceCursor {
                         next_updated_data_block,
                     };
@@ -6542,8 +6526,8 @@ impl AuthTreeReplayJournalUpdateScriptCursor {
                 if physical_allocation_block_index < next_journal_update_script_entry_target_allocation_blocks_begin
                     && (u64::from(tree_config.translate_physical_to_data_block_index(
                         next_journal_update_script_entry_target_allocation_blocks_begin,
-                    )) ^ u64::from(
-                        tree_config.translate_physical_to_data_block_index(physical_allocation_block_index),
+                    )?) ^ u64::from(
+                        tree_config.translate_physical_to_data_block_index(physical_allocation_block_index)?,
                     )) >> tree_config.covered_data_blocks_per_leaf_node_log2()
                         != 0
                 {
@@ -6799,7 +6783,7 @@ impl<B: blkdev::NvBlkDev> AuthTreeReplayJournalUpdateScriptCursorAdvanceFuture<B
                     cursor.cur_data_allocation_block_index,
                     tree_config.data_block_allocation_blocks_log2 as u32,
                 )) ^ u64::from(
-                    tree_config.translate_physical_to_data_block_index(to_physical_allocation_block_index),
+                    tree_config.translate_physical_to_data_block_index(to_physical_allocation_block_index)?,
                 )) >> tree_config.covered_data_blocks_per_leaf_node_log2()
                     == 0
             {
@@ -6829,7 +6813,7 @@ impl<B: blkdev::NvBlkDev> AuthTreeReplayJournalUpdateScriptCursorAdvanceFuture<B
                         tree_config
                             .translate_physical_to_data_block_index(
                                 next_journal_update_script_entry_target_allocation_blocks_begin,
-                            )
+                            )?
                             .align_down(tree_config.covered_data_blocks_per_leaf_node_log2() as u32),
                     );
                 debug_assert!(
@@ -6846,7 +6830,7 @@ impl<B: blkdev::NvBlkDev> AuthTreeReplayJournalUpdateScriptCursorAdvanceFuture<B
                     cursor.cur_data_allocation_block_index,
                     tree_config.data_block_allocation_blocks_log2 as u32,
                 )) ^ u64::from(
-                    tree_config.translate_physical_to_data_block_index(to_physical_allocation_block_index),
+                    tree_config.translate_physical_to_data_block_index(to_physical_allocation_block_index)?,
                 )) >> tree_config.covered_data_blocks_per_leaf_node_log2()
                     == 0
             {
@@ -6874,7 +6858,7 @@ impl<B: blkdev::NvBlkDev> AuthTreeReplayJournalUpdateScriptCursorAdvanceFuture<B
                 AuthTreeDataAllocBlockIndex::from(0u64) + image_data_allocation_blocks
             } else {
                 AuthTreeDataAllocBlockIndex::new_from_data_block_index(
-                    tree_config.translate_physical_to_data_block_index(to_physical_allocation_block_index),
+                    tree_config.translate_physical_to_data_block_index(to_physical_allocation_block_index)?,
                     tree_config.data_block_allocation_blocks_log2 as u32,
                 ) + layout::AllocBlockCount::from(
                     u64::from(to_physical_allocation_block_index)
@@ -7152,10 +7136,14 @@ impl<B: blkdev::NvBlkDev> AuthTreeReplayJournalUpdateScriptCursorAdvanceFuture<B
                                 );
                                 if cursor.cur_physical_allocation_block_index < journal_update_script_entry_range_begin
                                 {
+                                    let next_stop_data_block_index = match tree_config
+                                        .translate_physical_to_data_block_index(journal_update_script_entry_range_begin)
+                                    {
+                                        Ok(next_stop_data_block_index) => next_stop_data_block_index,
+                                        Err(e) => break Err(e),
+                                    };
                                     AuthTreeDataAllocBlockIndex::new_from_data_block_index(
-                                        tree_config.translate_physical_to_data_block_index(
-                                            journal_update_script_entry_range_begin,
-                                        ),
+                                        next_stop_data_block_index,
                                         tree_config.data_block_allocation_blocks_log2 as u32,
                                     ) + layout::AllocBlockCount::from(
                                         u64::from(journal_update_script_entry_range_begin)
@@ -7191,10 +7179,15 @@ impl<B: blkdev::NvBlkDev> AuthTreeReplayJournalUpdateScriptCursorAdvanceFuture<B
                                                     ));
                                                 }
                                             };
-                                        AuthTreeDataAllocBlockIndex::new_from_data_block_index(
-                                            tree_config.translate_physical_to_data_block_index(
+                                        let next_stop_data_block_index = match tree_config
+                                            .translate_physical_to_data_block_index(
                                                 journal_update_script_entry_range_end,
-                                            ),
+                                            ) {
+                                            Ok(next_stop_data_block_index) => next_stop_data_block_index,
+                                            Err(e) => break Err(e),
+                                        };
+                                        AuthTreeDataAllocBlockIndex::new_from_data_block_index(
+                                            next_stop_data_block_index,
                                             tree_config.data_block_allocation_blocks_log2 as u32,
                                         ) + layout::AllocBlockCount::from(
                                             u64::from(journal_update_script_entry_range_end)

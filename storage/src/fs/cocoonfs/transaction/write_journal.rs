@@ -1877,8 +1877,15 @@ impl<B: blkdev::NvBlkDev> TransactionCollectExtentsCoveringAuthDigestsFuture<B> 
                     // Authentication Tree Data Block is not modified by the transaction. Obtain the
                     // digest from the tree.
                     let auth_tree_config = fs_instance_sync_state.auth_tree.get_config();
-                    let cur_auth_tree_data_block_index = auth_tree_config
-                        .translate_physical_to_data_block_index(cur_auth_tree_data_block_allocation_blocks_begin);
+                    let cur_auth_tree_data_block_index = match auth_tree_config
+                        .translate_physical_to_data_block_index(cur_auth_tree_data_block_allocation_blocks_begin)
+                    {
+                        Ok(cur_auth_tree_data_block_index) => cur_auth_tree_data_block_index,
+                        Err(e) => {
+                            this.fut_state = TransactionCollectExtentsCoveringAuthDigestsFutureState::Done;
+                            return task::Poll::Ready((mem::take(&mut this.out_buffer), Err((Some(transaction), e))));
+                        }
+                    };
                     let auth_tree_leaf_node_id = auth_tree_config.covering_leaf_node_id(cur_auth_tree_data_block_index);
                     let auth_tree_leaf_node_load_fut = auth_tree::AuthTreeNodeLoadFuture::new(auth_tree_leaf_node_id);
                     this.transaction = Some(transaction);
@@ -2054,10 +2061,18 @@ impl<B: blkdev::NvBlkDev> TransactionCollectExtentsCoveringAuthDigestsFuture<B> 
                                 // simply get incremented linearly (as it's been
                                 // done up to point), but must be found through a lookup.
                                 if crossed_extent {
-                                    *cur_auth_tree_data_block_index = auth_tree_config
+                                    *cur_auth_tree_data_block_index = match auth_tree_config
                                         .translate_physical_to_data_block_index(
                                             *cur_auth_tree_data_block_allocation_blocks_begin,
-                                        );
+                                        ) {
+                                        Ok(cur_auth_tree_data_block_index) => cur_auth_tree_data_block_index,
+                                        Err(e) => {
+                                            return task::Poll::Ready((
+                                                mem::take(&mut this.out_buffer),
+                                                Err((Some(transaction), e)),
+                                            ));
+                                        }
+                                    };
                                     crossed_extent = false;
                                 }
                                 debug_assert!(u64::from(*cur_auth_tree_data_block_index) != 0);
@@ -2166,9 +2181,18 @@ impl<B: blkdev::NvBlkDev> TransactionCollectExtentsCoveringAuthDigestsFuture<B> 
                         // simply get incremented linearly (as it's been
                         // done up to point), but must be found through a lookup.
                         if crossed_extent {
-                            *cur_auth_tree_data_block_index = auth_tree_config.translate_physical_to_data_block_index(
-                                *cur_auth_tree_data_block_allocation_blocks_begin,
-                            );
+                            *cur_auth_tree_data_block_index = match auth_tree_config
+                                .translate_physical_to_data_block_index(
+                                    *cur_auth_tree_data_block_allocation_blocks_begin,
+                                ) {
+                                Ok(cur_auth_tree_data_block_index) => cur_auth_tree_data_block_index,
+                                Err(e) => {
+                                    return task::Poll::Ready((
+                                        mem::take(&mut this.out_buffer),
+                                        Err((Some(transaction), e)),
+                                    ));
+                                }
+                            };
                         }
 
                         // The Authentication Tree Data Block at the current position had not been

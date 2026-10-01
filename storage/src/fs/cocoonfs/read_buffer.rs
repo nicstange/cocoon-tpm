@@ -1059,7 +1059,7 @@ impl<B: blkdev::NvBlkDev> BufferedReadAuthenticateDataFuture<B> {
         let request_range_auth_tree_data_allocation_blocks_begin =
             auth_tree::AuthTreeDataAllocBlockIndex::new_from_data_block_index(
                 auth_tree_config
-                    .translate_physical_to_data_block_index(auth_tree_data_block_aligned_request_range.begin()),
+                    .translate_physical_to_data_block_index(auth_tree_data_block_aligned_request_range.begin())?,
                 auth_tree_data_block_allocation_blocks_log2 as u32,
             );
 
@@ -1557,8 +1557,15 @@ impl<B: blkdev::NvBlkDev> BufferedReadAuthenticateDataFuture<B> {
                                 continue;
                             }
 
-                            let auth_tree_data_block_index = auth_tree_config
-                                .translate_physical_to_data_block_index(this.d.authenticated_allocation_blocks_end);
+                            let auth_tree_data_block_index = match auth_tree_config
+                                .translate_physical_to_data_block_index(this.d.authenticated_allocation_blocks_end)
+                            {
+                                Ok(auth_tree_data_block_index) => auth_tree_data_block_index,
+                                Err(e) => {
+                                    this.fut_state = BufferedReadAuthenticateDataFutureState::Done;
+                                    return task::Poll::Ready(Err(e));
+                                }
+                            };
                             let auth_tree_leaf_node_id =
                                 auth_tree_config.covering_leaf_node_id(auth_tree_data_block_index);
                             let auth_tree_leaf_node_load_fut =
@@ -1607,10 +1614,16 @@ impl<B: blkdev::NvBlkDev> BufferedReadAuthenticateDataFuture<B> {
                             // request region are contiguous as well.
                             loop {
                                 debug_assert!({
-                                    let cur_auth_tree_data_block_index = auth_tree_config
+                                    let cur_auth_tree_data_block_index = match auth_tree_config
                                         .translate_physical_to_data_block_index(
                                             this.d.authenticated_allocation_blocks_end,
-                                        );
+                                        ) {
+                                        Ok(cur_auth_tree_data_block_index) => cur_auth_tree_data_block_index,
+                                        Err(e) => {
+                                            this.fut_state = BufferedReadAuthenticateDataFutureState::Done;
+                                            return task::Poll::Ready(Err(e));
+                                        }
+                                    };
                                     let leaf_node_id = leaf_node.get_node_id();
                                     *auth_tree_data_block_index == cur_auth_tree_data_block_index
                                         && cur_auth_tree_data_block_index >= leaf_node_id.first_covered_data_block()

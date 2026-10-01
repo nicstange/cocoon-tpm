@@ -102,12 +102,12 @@ pub fn collect_alloc_bitmap_blocks_for_auth_tree_reconstruction<UI: JournalUpdat
         );
 
         // Translate to a (contiguous) range in the Authentication Tree Data domain.
-        let first_updated_auth_tree_data_block_index =
-            auth_tree_config.translate_physical_to_data_block_index(updated_physical_allocation_blocks_range.begin());
+        let first_updated_auth_tree_data_block_index = auth_tree_config
+            .translate_physical_to_data_block_index(updated_physical_allocation_blocks_range.begin())?;
         let last_updated_auth_tree_data_block_index = auth_tree_config.translate_physical_to_data_block_index(
             layout::PhysicalAllocBlockIndex::from(u64::from(updated_physical_allocation_blocks_range.end()) - 1)
                 .align_down(auth_tree_data_block_allocation_blocks_log2),
-        );
+        )?;
 
         // As leaf nodes must be assumed partially written during the Journal
         // replay, they need to get reconstructed in full. Extend the

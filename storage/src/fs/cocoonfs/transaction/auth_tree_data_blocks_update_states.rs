@@ -3101,7 +3101,7 @@ impl AuthTreeDataBlocksUpdateStates {
             }
 
             let cur_auth_tree_data_block_index = auth_tree_config
-                .translate_physical_to_data_block_index(cur_auth_tree_data_block_allocation_blocks_begin);
+                .translate_physical_to_data_block_index(cur_auth_tree_data_block_allocation_blocks_begin)?;
             cur_update_state.auth_digest = Some(auth_tree_config.digest_data_block(
                 cur_auth_tree_data_block_index,
                 cur_update_state.iter_auth_digest_allocation_blocks(image_header_end, true),

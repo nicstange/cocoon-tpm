@@ -2263,8 +2263,17 @@ impl<B: blkdev::NvBlkDev> AllocBitmapFileReadJournalFragmentsFuture<B> {
                     // All of the read_buffers' contents comes from a single physically contiguous
                     // Allocation Bitmap File extent, hence its also contiguous
                     // in the Authentication Tree Data Block index domain.
-                    let read_buffers_base_auth_tree_data_block_index = auth_tree_config
-                        .translate_physical_to_data_block_index(read_buffers_base_target_allocation_block_index);
+                    let read_buffers_base_auth_tree_data_block_index = match auth_tree_config
+                        .translate_physical_to_data_block_index(read_buffers_base_target_allocation_block_index)
+                    {
+                        Ok(read_buffers_base_auth_tree_data_block_index) => {
+                            read_buffers_base_auth_tree_data_block_index
+                        }
+                        Err(e) => {
+                            this.fut_state = AllocBitmapFileReadJournalFragmentsFutureState::Done;
+                            return task::Poll::Ready(Err(e));
+                        }
+                    };
 
                     let bitmap = match this.bitmap.as_mut() {
                         Some(bitmap) => bitmap,
