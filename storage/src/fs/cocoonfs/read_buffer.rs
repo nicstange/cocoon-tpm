@@ -1180,6 +1180,19 @@ impl<B: blkdev::NvBlkDev> BufferedReadAuthenticateDataFuture<B> {
                             if found_subrange == this.d.request_range {
                                 // All found authenticated in the read buffer -> done.
                                 this.fut_state = BufferedReadAuthenticateDataFutureState::Done;
+
+                                // All Allocation Blocks in the request range are expected to be allocated.
+                                // As a safety-measure against buggy writers, check that and return an error
+                                // if not, so that upper layers aren't getting confused by empty buffers.
+                                if this
+                                    .d
+                                    .dst_allocation_blocks_bufs
+                                    .iter()
+                                    .any(|allocation_block_buf| allocation_block_buf.is_empty())
+                                {
+                                    return task::Poll::Ready(Err(NvFsError::from(FormatError::InvalidExtents)));
+                                }
+
                                 return task::Poll::Ready(Ok(mem::take(&mut this.d.dst_allocation_blocks_bufs)));
                             }
                             this.d.authenticated_subrange_from_read_buf = Some(found_subrange);
@@ -1282,6 +1295,19 @@ impl<B: blkdev::NvBlkDev> BufferedReadAuthenticateDataFuture<B> {
                             .unwrap_or(false)
                         {
                             // All the data is there, proceed to the authentication.
+                            // All Allocation Blocks in the request range are expected to be allocated.
+                            // As a safety-measure against buggy writers, check that and return an error
+                            // if not, so that upper layers aren't getting confused by empty buffers.
+                            if this
+                                .d
+                                .dst_allocation_blocks_bufs
+                                .iter()
+                                .any(|allocation_block_buf| allocation_block_buf.is_empty())
+                            {
+                                this.fut_state = BufferedReadAuthenticateDataFutureState::Done;
+                                return task::Poll::Ready(Err(NvFsError::from(FormatError::InvalidExtents)));
+                            }
+
                             this.fut_state = BufferedReadAuthenticateDataFutureState::AuthenticateSubrange {
                                 auth_subrange_fut_state: BufferedReadAuthenticateDataFutureAuthenticateState::Init,
                             };
@@ -1348,6 +1374,13 @@ impl<B: blkdev::NvBlkDev> BufferedReadAuthenticateDataFuture<B> {
                         debug_assert!(cur_allocation_block_index < this.d.aligned_request_range.end());
                         let allocation_block_is_allocated = alloc_bitmap_iter.next().unwrap_or(false);
                         // All Allocation Blocks in the requested range are assumed to be allocated.
+                        if !allocation_block_is_allocated
+                            && cur_allocation_block_index >= this.d.request_range.begin()
+                            && cur_allocation_block_index < this.d.request_range.end()
+                        {
+                            this.fut_state = BufferedReadAuthenticateDataFutureState::Done;
+                            return task::Poll::Ready(Err(NvFsError::from(FormatError::InvalidExtents)));
+                        }
                         debug_assert!(
                             cur_allocation_block_index < this.d.request_range.begin()
                                 || cur_allocation_block_index >= this.d.request_range.end()
