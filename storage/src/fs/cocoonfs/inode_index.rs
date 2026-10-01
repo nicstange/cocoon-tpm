@@ -4767,6 +4767,7 @@ enum InodeIndexEnumerateCursorNextFutureState<ST: sync_types::SyncTypes, B: blkd
         // Is mandatory, lives in an Option<> only so that it can be taken out of a mutable
         // reference on Self.  Has its transaction moved temporarily into read_fut.
         cursor: Option<Box<InodeIndexEnumerateCursor<ST, B>>>,
+        last_inode: InodeIndexKeyType,
         read_fut: InodeIndexReadTreeNodeFuture<B>,
     },
     InodesRangeExhausted {
@@ -4941,6 +4942,14 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                                 }
                             };
 
+                            let last_inode = match leaf_node.entry_inode(
+                                tree_position.entry_index_in_leaf_node - 1,
+                                &fs_instance_sync_state.inode_index.layout,
+                            ) {
+                                Ok(inode) => inode,
+                                Err(e) => break (Some(cursor), None, e),
+                            };
+
                             let read_fut = InodeIndexReadTreeNodeFuture::new(
                                 cursor.transaction.take(),
                                 next_leaf_node_allocation_blocks_begin,
@@ -4949,6 +4958,7 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                             );
                             this.fut_state = InodeIndexEnumerateCursorNextFutureState::ReadNextTreeLeafNode {
                                 cursor: Some(cursor),
+                                last_inode,
                                 read_fut,
                             };
                         }
@@ -5127,6 +5137,7 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                                                 );
                                                 InodeIndexEnumerateCursorNextFutureState::ReadNextTreeLeafNode {
                                                     cursor: Some(cursor),
+                                                    last_inode: *next_inode - 1,
                                                     read_fut,
                                                 }
                                             }
@@ -5192,7 +5203,11 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                         Err(e) => break (Some(cursor), returned_transaction.or(node_ref.into_transaction()), e),
                     }
                 }
-                InodeIndexEnumerateCursorNextFutureState::ReadNextTreeLeafNode { cursor, read_fut } => {
+                InodeIndexEnumerateCursorNextFutureState::ReadNextTreeLeafNode {
+                    cursor,
+                    last_inode,
+                    read_fut,
+                } => {
                     let (
                         fs_instance,
                         _fs_sync_state_aux_fs_metadata_update_groups_heads,
@@ -5253,6 +5268,16 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                         Ok(inode) => inode,
                         Err(e) => break (Some(cursor), node_ref.into_transaction(), e),
                     };
+                    // As a robustness measure, check for infinite loops due to corrupt pointers in
+                    // the leaves chain. Note that everything is authenticated, so this can happen
+                    // only with buggy writers.
+                    if inode <= *last_inode {
+                        break (
+                            Some(cursor),
+                            node_ref.into_transaction(),
+                            NvFsError::from(FormatError::InvalidIndexNode),
+                        );
+                    }
                     let inode_flags = match leaf_node.entry_flags(0, &fs_sync_state_inode_index.layout) {
                         Ok(inode_flags) => inode_flags,
                         Err(e) => break (Some(cursor), node_ref.into_transaction(), e),
@@ -8756,6 +8781,7 @@ enum InodeIndexUnlinkCursorNextFutureState<ST: sync_types::SyncTypes, B: blkdev:
         // Is mandatory, lives in an Option<> only so that it can be taken out of a mutable
         // reference on Self.  Has its transaction moved temporarily into read_fut.
         cursor: Option<Box<InodeIndexUnlinkCursor<ST, B>>>,
+        last_inode: InodeIndexKeyType,
         read_fut: InodeIndexReadTreeNodeFuture<B>,
     },
     InodesRangeExhausted {
@@ -8944,6 +8970,24 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                                 }
                             };
 
+                            // Careful: under normal circumstances leaf nodes (which are not the
+                            // root) are non-empty and entry_index_in_leaf_node is != 0. last_inode
+                            // gets computed specifically to handle corrupted leaf node chain links
+                            // though, in which case we could circulate back into merged ones.
+                            let last_inode = match tree_position
+                                .entry_index_in_leaf_node
+                                .checked_sub(1)
+                                .ok_or(NvFsError::from(FormatError::InvalidIndexNode))
+                                .and_then(|prev_entry_index_in_leaf_node| {
+                                    leaf_node.entry_inode(
+                                        prev_entry_index_in_leaf_node,
+                                        &fs_instance_sync_state.inode_index.layout,
+                                    )
+                                }) {
+                                Ok(inode) => inode,
+                                Err(e) => break (Some(cursor), Some(transaction), e),
+                            };
+
                             // If there's a leaf parent node cached, try to keep that if the next leaf
                             // is also among its children.
                             if let Some(leaf_parent_node) = tree_position.leaf_parent_node.as_ref() {
@@ -9056,6 +9100,7 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                             );
                             this.fut_state = InodeIndexUnlinkCursorNextFutureState::ReadNextTreeLeafNode {
                                 cursor: Some(cursor),
+                                last_inode,
                                 read_fut,
                             };
                         }
@@ -9398,6 +9443,7 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                                                 );
                                                 InodeIndexUnlinkCursorNextFutureState::ReadNextTreeLeafNode {
                                                     cursor: Some(cursor),
+                                                    last_inode: *next_inode - 1,
                                                     read_fut,
                                                 }
                                             }
@@ -9476,7 +9522,11 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                         Err(e) => break (Some(cursor), returned_transaction.or(node_ref.into_transaction()), e),
                     }
                 }
-                InodeIndexUnlinkCursorNextFutureState::ReadNextTreeLeafNode { cursor, read_fut } => {
+                InodeIndexUnlinkCursorNextFutureState::ReadNextTreeLeafNode {
+                    cursor,
+                    last_inode,
+                    read_fut,
+                } => {
                     let (
                         fs_instance,
                         _fs_sync_state_aux_fs_metadata_update_groups_heads,
@@ -9551,6 +9601,16 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                         Ok(inode) => inode,
                         Err(e) => break (Some(cursor), Some(transaction), e),
                     };
+                    // As a robustness measure, check for infinite loops due to corrupt pointers in
+                    // the leaves chain. Note that everything is authenticated, so this can happen
+                    // only with buggy writers.
+                    if inode <= *last_inode {
+                        break (
+                            Some(cursor),
+                            Some(transaction),
+                            NvFsError::from(FormatError::InvalidIndexNode),
+                        );
+                    }
                     let inode_flags = match leaf_node.entry_flags(0, &fs_sync_state_inode_index.layout) {
                         Ok(inode_flags) => inode_flags,
                         Err(e) => {
