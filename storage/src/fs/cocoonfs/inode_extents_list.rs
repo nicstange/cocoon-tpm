@@ -534,6 +534,19 @@ impl<ST: sync_types::SyncTypes, B: blkdev::NvBlkDev> CocoonFsSyncStateReadFuture
                     // If there's another extents list extent chained from the current one, continue
                     // with reading + decrpyting that.
                     if let Some(next_chained_inode_extents_list_extent) = next_chained_inode_extents_list_extent {
+                        // Protect against buggy writers, don't digress into infite loops in case
+                        // there's a cycle. Also, an assumed invariant of PhysicalExtents is to never
+                        // have any overlapping extents. Enforce this as a robustness measure.
+                        for inode_extents_list_extent in this.inode_extents_list_extents.iter() {
+                            if next_chained_inode_extents_list_extent.overlaps_with(&inode_extents_list_extent) {
+                                this.fut_state = InodeExtentsListReadFutureState::Done;
+                                return task::Poll::Ready((
+                                    transaction,
+                                    Err(NvFsError::from(FormatError::InvalidExtents)),
+                                ));
+                            }
+                        }
+
                         this.fut_state = InodeExtentsListReadFutureState::ReadExtentsListExtentPrepare {
                             transaction,
                             next_inode_extents_list_extent: next_chained_inode_extents_list_extent,
