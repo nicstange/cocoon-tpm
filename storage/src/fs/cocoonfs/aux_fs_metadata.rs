@@ -1422,10 +1422,14 @@ impl<B: blkdev::NvBlkDev> blkdev::NvBlkDevFuture<B> for DoReadAuxFsMetadataFutur
                     // - and its length in units of Bytes is representable as an usize,
                     // - and its length is at least the minimum size required for the extent type
                     //   (head or tail).
-
-                    // Check for (unexpected) loops.
+                    // Check for (unexpected) loops, including partial overlaps with extents
+                    // collected already. The primary motivation is to not digress into
+                    // infinite loops. Second, an invariant of the PhysicalExtents container
+                    // is that its extents never overlap. The extents list collected here is
+                    // unauthenticated, so check for that as a robustness measure such that the
+                    // implementation cannot get confused somehow.
                     for processed_extent in this.aux_fs_metadata_extents.extents.iter() {
-                        if extent.begin() == processed_extent.begin() {
+                        if extent.overlaps_with(&processed_extent) {
                             this.fut_state = DoReadAuxFsMetadataFutureState::Done;
                             return task::Poll::Ready(Err(NvFsError::from(
                                 FormatError::InconsistentAuxFsMetadataExtentsChain,
@@ -2179,7 +2183,16 @@ impl<B: blkdev::NvBlkDev> blkdev::NvBlkDevFuture<B> for DoReadAuxFsMetadataFutur
                                     read_full,
                                 }
                             } else {
-                                // Record the to be skipped extent.
+                                // Record the to be skipped extent. Enforce the PhysicalExtents invariant that
+                                // all extents are non-overlapping as a robustness measure.
+                                for processed_extent in this.aux_fs_metadata_extents.extents.iter() {
+                                    if chained_extents_ptrs[0].overlaps_with(&processed_extent) {
+                                        this.fut_state = DoReadAuxFsMetadataFutureState::Done;
+                                        return task::Poll::Ready(Err(NvFsError::from(
+                                            FormatError::InconsistentAuxFsMetadataExtentsChain,
+                                        )));
+                                    }
+                                }
                                 if let Some(insertion_pos) = this
                                     .aux_fs_metadata_extents
                                     .update_group1_extents_begin
