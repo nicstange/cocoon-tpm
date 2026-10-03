@@ -3570,6 +3570,10 @@ enum WriteMkFsInfoHeaderDataFutureState<B: blkdev::NvBlkDev> {
     Init {
         to_backup_location: bool,
     },
+    WriteBarrierBeforeInvalidate {
+        write_barrier_fut: B::WriteBarrierFuture,
+        mkfsinfo_header_location: layout::PhysicalAllocBlockRange,
+    },
     InvalidateHeader {
         invalidate_fut: ExtentIntegrityProtectionsInvalidateFuture<B>,
         mkfsinfo_header_location: layout::PhysicalAllocBlockRange,
@@ -3716,9 +3720,42 @@ impl<B: blkdev::NvBlkDev> WriteMkFsInfoHeaderDataFuture<B> {
                         return task::Poll::Ready(Err(NvFsError::DimensionsNotSupported));
                     }
 
-                    // Before writing anything to storage, invalidate the integrity protections,
-                    // so that any partial writes from here will not be considered until all is
-                    // done.
+                    // The copy not to get written to, if there is any, is the
+                    // only other valid one
+                    // while the current one is under write. Its most recent
+                    // write might still be unordered (a
+                    // previously failed operation's concluding write barrier),
+                    // so fence before destroying the
+                    // currently active one.
+                    let write_barrier_fut = match blkdev.write_barrier() {
+                        Ok(write_barrier_fut) => write_barrier_fut,
+                        Err(e) => {
+                            this.fut_state = WriteMkFsInfoHeaderDataFutureState::Done;
+                            return task::Poll::Ready(Err(NvFsError::from(e)));
+                        }
+                    };
+                    this.fut_state = WriteMkFsInfoHeaderDataFutureState::WriteBarrierBeforeInvalidate {
+                        write_barrier_fut,
+                        mkfsinfo_header_location,
+                    };
+                }
+                WriteMkFsInfoHeaderDataFutureState::WriteBarrierBeforeInvalidate {
+                    write_barrier_fut,
+                    mkfsinfo_header_location,
+                } => {
+                    match blkdev::NvBlkDevFuture::poll(pin::Pin::new(write_barrier_fut), blkdev, cx) {
+                        task::Poll::Ready(Ok(())) => (),
+                        task::Poll::Ready(Err(e)) => {
+                            this.fut_state = WriteMkFsInfoHeaderDataFutureState::Done;
+                            return task::Poll::Ready(Err(NvFsError::from(e)));
+                        }
+                        task::Poll::Pending => return task::Poll::Pending,
+                    };
+
+                    // Before writing anything to storage, invalidate the
+                    // integrity protections, so that any
+                    // partial writes from here will not be considered until all
+                    // is done.
                     let invalidate_fut = ExtentIntegrityProtectionsInvalidateFuture::new(
                         mkfsinfo_header_location.begin(),
                         image_layout.allocation_block_size_128b_log2,
@@ -3726,7 +3763,7 @@ impl<B: blkdev::NvBlkDev> WriteMkFsInfoHeaderDataFuture<B> {
                     );
                     this.fut_state = WriteMkFsInfoHeaderDataFutureState::InvalidateHeader {
                         invalidate_fut,
-                        mkfsinfo_header_location,
+                        mkfsinfo_header_location: *mkfsinfo_header_location,
                     };
                 }
                 WriteMkFsInfoHeaderDataFutureState::InvalidateHeader {
@@ -4341,10 +4378,6 @@ enum UpdateMkFsInfoAuxFsMetadataFutureState<B: blkdev::NvBlkDev> {
         updated_primary_mkfsinfo_data_allocation_blocks: layout::AllocBlockCount,
         write_backup_mkfsinfo_header_fut: WriteMkFsInfoHeaderDataFuture<B>,
     },
-    WriteBarrierAfterBackupMkFsInfoHeaderDataWrite {
-        updated_primary_mkfsinfo_data_allocation_blocks: layout::AllocBlockCount,
-        write_barrier_fut: B::WriteBarrierFuture,
-    },
     WriteUpdatedPrimaryMkFsInfoHeaderDataPrepare {
         updated_primary_mkfsinfo_data_allocation_blocks: layout::AllocBlockCount,
     },
@@ -4759,33 +4792,6 @@ impl<B: blkdev::NvBlkDev> blkdev::NvBlkDevFuture<B> for UpdateMkFsInfoAuxFsMetad
                         }
                         task::Poll::Pending => return task::Poll::Pending,
                     }
-
-                    let write_barrier_fut = match blkdev.write_barrier() {
-                        Ok(write_barrier_fut) => write_barrier_fut,
-                        Err(e) => {
-                            this.fut_state = UpdateMkFsInfoAuxFsMetadataFutureState::Done;
-                            return task::Poll::Ready(Err(NvFsError::from(e)));
-                        }
-                    };
-                    this.fut_state =
-                        UpdateMkFsInfoAuxFsMetadataFutureState::WriteBarrierAfterBackupMkFsInfoHeaderDataWrite {
-                            updated_primary_mkfsinfo_data_allocation_blocks:
-                                *updated_primary_mkfsinfo_data_allocation_blocks,
-                            write_barrier_fut,
-                        };
-                }
-                UpdateMkFsInfoAuxFsMetadataFutureState::WriteBarrierAfterBackupMkFsInfoHeaderDataWrite {
-                    updated_primary_mkfsinfo_data_allocation_blocks,
-                    write_barrier_fut,
-                } => {
-                    match blkdev::NvBlkDevFuture::poll(pin::Pin::new(write_barrier_fut), blkdev, cx) {
-                        task::Poll::Ready(Ok(())) => (),
-                        task::Poll::Ready(Err(e)) => {
-                            this.fut_state = UpdateMkFsInfoAuxFsMetadataFutureState::Done;
-                            return task::Poll::Ready(Err(NvFsError::from(e)));
-                        }
-                        task::Poll::Pending => return task::Poll::Pending,
-                    };
 
                     this.fut_state =
                         UpdateMkFsInfoAuxFsMetadataFutureState::WriteUpdatedPrimaryMkFsInfoHeaderDataPrepare {
