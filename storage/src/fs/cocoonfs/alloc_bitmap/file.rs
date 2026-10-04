@@ -1475,7 +1475,7 @@ impl<B: blkdev::NvBlkDev> AllocBitmapFileReadJournalFragmentsFuture<B> {
         let mut ordered_file_extents = Vec::new();
         ordered_file_extents.try_reserve_exact(file.extents.len())?;
         ordered_file_extents.extend(0..file.extents.len());
-        ordered_file_extents.sort_by(|i, j| {
+        ordered_file_extents.sort_unstable_by(|i, j| {
             // The extents are non-overlapping and non-empty.
             file.extents
                 .get_extent(*i)

@@ -334,7 +334,7 @@ pub fn alloc_bitmap_file_block_indices_to_physical_extents(
 
     // Finally, sort and merge the found physical extents.
     let physical_extents_len = physical_extents.len();
-    physical_extents.sort_extents_by(
+    physical_extents.sort_extents_unstable_by(
         0..physical_extents_len,
         |e0, e1| match e0.end().cmp(&e1.begin()) {
             cmp::Ordering::Less => cmp::Ordering::Less,

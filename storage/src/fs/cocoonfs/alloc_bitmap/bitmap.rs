@@ -3523,7 +3523,7 @@ impl AllocBitmap {
                 1
             };
             let sort_end_index = extents.len();
-            extents.sort_extents_by(
+            extents.sort_extents_unstable_by(
                 sort_start_index..sort_end_index,
                 |e0, e1| match e0.block_count().cmp(&e1.block_count()) {
                     cmp::Ordering::Less => cmp::Ordering::Less,
