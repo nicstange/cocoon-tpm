@@ -3471,7 +3471,7 @@ impl TransactionInodeIndexUpdates {
         mut indices: [usize; N],
     ) -> Result<[&mut TransactionInodeIndexUpdatesStagedTreeNode; N], NvFsError> {
         let mut index_perm: [usize; N] = array::from_fn(|i| i);
-        index_perm.sort_by(|i0, i1| indices[*i0].cmp(&indices[*i1]));
+        index_perm.sort_unstable_by(|i0, i1| indices[*i0].cmp(&indices[*i1]));
         // Afterwards, indices are sorted in ascending order and
         // index_perm contains the inverse permutation to undo the sorting.
         index_permutation::apply_and_invert_index_perm(&mut index_perm, &mut indices);
